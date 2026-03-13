@@ -164,6 +164,288 @@ footer::after{content:'';position:absolute;top:-10px;left:0;right:0;height:20px;
 .social-row a:hover{color:var(--rust)}
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════════════════════════════
+   RESPONSIVE — Tablet (max 768px)
+   ═══════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* NAV */
+  nav {
+    padding: .7rem 1.2rem;
+    gap: .8rem;
+  }
+  .nav-links {
+    gap: 1rem;
+  }
+  .nav-links a {
+    font-size: .65rem;
+    letter-spacing: .08em;
+  }
+  .logo-text .name {
+    font-size: .82rem;
+  }
+
+  /* HERO */
+  .hero-img-wrap {
+    height: 60vh;
+    min-height: 380px;
+  }
+  .hero-title {
+    font-size: clamp(3.2rem, 10vw, 5.5rem);
+    letter-spacing: .25em;
+  }
+  .hero-sub {
+    font-size: .68rem;
+    letter-spacing: .3em;
+  }
+  .hero-caption {
+    font-size: .58rem;
+    letter-spacing: .12em;
+  }
+
+  /* WALL */
+  .wall {
+    padding-left: 1.2rem;
+    padding-right: 1.2rem;
+  }
+
+  /* TEASERS — 1 columna */
+  .teasers {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+    padding-bottom: 3rem;
+  }
+  .tc:nth-child(2),
+  .tc:nth-child(3) {
+    transform: none;
+  }
+
+  /* SECTION HEADING */
+  .sh {
+    padding-top: 3.5rem;
+    margin-bottom: 2rem;
+  }
+  .sh h2 {
+    font-size: 1.5rem;
+  }
+
+  /* HISTORIA — 1 columna */
+  .historia-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding-bottom: 3.5rem;
+  }
+  .hs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding-top: 0;
+  }
+  .postit.y, .postit.b {
+    transform: none !important;
+  }
+
+  /* AVANCES — 1 columna */
+  .avances-grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    padding-bottom: 3.5rem;
+  }
+  .aframe {
+    transform: none;
+  }
+
+  /* PROYECTO — 1 columna */
+  .proyecto-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding-bottom: 3.5rem;
+  }
+
+  /* EQUIPO — 1 columna centrado */
+  .equipo-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding-bottom: 3.5rem;
+    justify-items: center;
+    text-align: center;
+  }
+  .avatar {
+    transform: none;
+  }
+  .role {
+    display: block;
+  }
+
+  /* VOTE */
+  .vote-box {
+    padding: 1.8rem 1.5rem;
+    transform: none;
+  }
+  .vote-q {
+    font-size: 1.2rem;
+  }
+
+  /* FOOTER */
+  footer {
+    padding: 3.5rem 1.5rem 2rem;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .8rem;
+  }
+}
+
+/* ═══════════════════════════════
+   RESPONSIVE — Móvil (max 480px)
+   ═══════════════════════════════ */
+@media (max-width: 480px) {
+
+  /* NAV — ocultar links, solo logo */
+  .nav-links {
+    display: none;
+  }
+  nav {
+    justify-content: center;
+    padding: .7rem 1.2rem;
+  }
+
+  /* HERO */
+  .hero-img-wrap {
+    height: 55vh;
+    min-height: 340px;
+  }
+  .hero-title {
+    font-size: clamp(2.8rem, 14vw, 4rem);
+    letter-spacing: .18em;
+  }
+  .hero-sub {
+    font-size: .6rem;
+    letter-spacing: .2em;
+    padding: 0 1rem;
+    text-align: center;
+  }
+  .hero-caption {
+    font-size: .52rem;
+    letter-spacing: .1em;
+    padding: 0 1rem;
+  }
+  .hero-overlay {
+    padding-bottom: 2rem;
+  }
+
+  /* WALL */
+  .wall {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* HISTORIA texto */
+  .ht p {
+    font-size: 1rem;
+    line-height: 1.85;
+  }
+  .ht p.drop::first-letter {
+    font-size: 2.8rem;
+  }
+
+  /* POST-ITS — 1 columna en móvil pequeño */
+  .hs {
+    grid-template-columns: 1fr;
+  }
+
+  /* AVANCES texto */
+  .at h3 {
+    font-size: 1.3rem;
+  }
+  .at p {
+    font-size: 1rem;
+  }
+
+  /* VOTE */
+  .vote-outer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 4rem;
+  }
+  .vote-box {
+    padding: 1.5rem 1.2rem;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .vote-num {
+    font-size: 3rem;
+  }
+  .vote-row {
+    flex-direction: column;
+  }
+  .vote-input {
+    min-width: 100%;
+  }
+  .vote-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* EQUIPO */
+  .et h3 {
+    font-size: 1.2rem;
+  }
+  .et p {
+    font-size: 1rem;
+    text-align: left;
+  }
+
+  /* PROYECTO T1 box */
+  .t1-box {
+    padding: 1.3rem 1.2rem;
+  }
+  .t1-box p {
+    font-size: .98rem;
+  }
+
+  /* FOOTER */
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 1.8rem;
+  }
+  footer {
+    padding: 3rem 1.2rem 2rem;
+  }
+  .social-row {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  /* Section heading */
+  .sh {
+    padding-top: 3rem;
+    margin-bottom: 1.5rem;
+  }
+  .sh h2 {
+    font-size: 1.3rem;
+  }
+
+  /* Margins for sections */
+  .historia-grid,
+  .avances-grid,
+  .proyecto-grid,
+  .equipo-grid {
+    padding-bottom: 3rem;
+  }
+  .ci {
+    padding-bottom: 3rem;
+  }
+}
+
 </style>
 </head>
 <body>
