@@ -1189,84 +1189,6 @@ nav {
   margin-bottom: 1.5rem;
 }
 
-
-
-/* ===== LAYOUT FIXES — marzo 2026 ===== */
-.historia-top{
-  display:grid;
-  grid-template-columns:280px minmax(0,1fr);
-  gap:3rem;
-  align-items:start;
-}
-.historia-bottom{
-  margin-top:1.8rem;
-}
-.historia-bottom p{
-  font-size:1.1rem;
-  line-height:2;
-  color:var(--ink-mid);
-  margin-bottom:1.15rem;
-}
-.historia-notes{
-  margin-top:1.8rem;
-}
-.historia-notes.hs{
-  grid-template-columns:repeat(4,minmax(0,1fr));
-}
-
-.avances-top{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:3.5rem;
-  align-items:start;
-  margin-bottom:1.8rem;
-}
-.avances-text-col .badge{margin-bottom:1rem;}
-.avances-bottom-text{
-  margin-top:.3rem;
-  max-width:none;
-}
-.avances-bottom-text p{
-  font-size:1.05rem;
-  line-height:1.95;
-  color:var(--ink-mid);
-  margin-bottom:1rem;
-}
-
-.evolution-grid{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:3rem;
-  align-items:start;
-  margin-bottom:2rem;
-}
-.evo-arrow{display:none;}
-.evo-step,.evo-frame,.evo-frame img{width:100%;}
-.evo-frame{padding:10px 10px 42px; box-shadow:6px 8px 0 var(--shadow-strong);}
-.evo-frame-video{
-  width:100%;
-  box-shadow:6px 8px 0 var(--shadow-strong);
-}
-.evo-frame-video video{
-  width:100%;
-  min-height:640px;
-  max-height:780px;
-  object-fit:contain;
-  background:#000;
-}
-.evolution-video-wrap{width:100%;}
-
-@media (max-width: 768px){
-  .historia-top{grid-template-columns:1fr; gap:1.5rem;}
-  .historia-notes.hs{grid-template-columns:1fr 1fr;}
-  .avances-top{grid-template-columns:1fr; gap:2rem;}
-  .evolution-grid{grid-template-columns:1fr; gap:1.5rem;}
-  .evo-frame-video video{min-height:320px;}
-}
-@media (max-width: 480px){
-  .historia-notes.hs{grid-template-columns:1fr;}
-  .evo-frame-video video{min-height:240px;}
-}
-
 </style>
 </head>
 <body>
@@ -1337,30 +1259,30 @@ nav {
   <div class="wall">
     <div class="sh"><span class="sl">01 —</span><h2>Abre boca</h2></div>
     <div class="historia-grid">
-      <div class="historia-top">
-        <div class="historia-img-col">
-          <div class="historia-img-frame">
-            <img src="chris-despertando.png" alt="Chris despertando" style="width:100%;display:block;"/>
-          </div>
-          <p class="historia-img-lbl">Estilo deseado</p>
+      <!-- image column -->
+      <div class="historia-img-col">
+        <div class="historia-img-frame">
+          <img src="chris-despertando.png" alt="Chris despertando" style="width:100%;display:block;"/>
         </div>
+        <p class="historia-img-lbl">Estilo deseado</p>
+      </div>
+      <!-- text + postits column -->
+      <div class="historia-right">
         <div class="ht">
           <p class="drop">50 años han pasado desde la fundación de <span class="hl">La Capital</span>, el último bastión de la humanidad.</p>
           <p>La Capital se mantiene en pie porque tiene que hacerlo. Bajo el domo, todo funciona: la gente vive, trabaja, sigue adelante. Hay orden. Fuera del domo, tras la última de las guerras —un conflicto que nunca terminó—, solo hay destrucción, desolación y muerte.</p>
           <p>Dentro del domo, los recursos no son suficientes para sostener la supervivencia. Por eso, la humanidad se ve obligada a cruzar sus propios límites de seguridad y enfrentarse a lo que hay más allá.</p>
           <p>Hay unos pocos quienes cruzan cuando nadie más lo hace. Quienes ven lo que el resto no necesita ver.</p>
+          <p>En ese equilibrio crece <span class="hl">Chris Holloway</span>. Dieciséis años, en el borde del domo, donde el límite se siente más cerca.</p>
+          <p>Cada día observa el mismo ritual: un tren que se aleja hacia el exterior. Un tren que, sin descanso, parte en cada amanecer lleno de valentía, coraje y gloria, y regresa en el crepúsculo cargado de aquello que mantiene al domo en pie.</p>
+          <p><em>Chris crece con la idea de luchar por la humanidad, de enfrentar el mal que habita fuera. Y sí, luchará por ese ideal… pero también abrirá grietas en una realidad que alguna vez creyó sin fisuras, construida sobre la idea de seguridad y unión como especie.</em></p>
         </div>
-      </div>
-      <div class="historia-bottom ht">
-        <p>En ese equilibrio crece <span class="hl">Chris Holloway</span>. Dieciséis años, en el borde del domo, donde el límite se siente más cerca.</p>
-        <p>Cada día observa el mismo ritual: un tren que se aleja hacia el exterior. Un tren que, sin descanso, parte en cada amanecer lleno de valentía, coraje y gloria, y regresa en el crepúsculo cargado de aquello que mantiene al domo en pie.</p>
-        <p><em>Chris crece con la idea de luchar por la humanidad, de enfrentar el mal que habita fuera. Y sí, luchará por ese ideal… pero también abrirá grietas en una realidad que alguna vez creyó sin fisuras, construida sobre la idea de seguridad y unión como especie.</em></p>
-      </div>
-      <div class="historia-notes hs">
-        <div class="postit y"><p>🏙️ <strong>La Capital</strong><br>El último bastión organizado de la humanidad.</p></div>
-        <div class="postit b"><p>💎 <strong>El Prismal</strong><br>El cristal que mantiene todo en pie. Lleno de secretos.</p></div>
-        <div class="postit y" style="transform:rotate(-1deg)"><p>👤 <strong>Chris Holloway</strong><br>16 años. Dispuesto a llevar una cruz.</p></div>
-        <div class="postit b" style="transform:rotate(.9deg)"><p>⚠️ <strong>Los Ferrosomas</strong><br>El enemigo que no descansa. Sin piedad. Sin mente.</p></div>
+        <div class="hs">
+          <div class="postit y"><p>🏙️ <strong>La Capital</strong><br>El último bastión organizado de la humanidad.</p></div>
+          <div class="postit b"><p>💎 <strong>El Prismal</strong><br>El cristal que mantiene todo en pie. Lleno de secretos.</p></div>
+          <div class="postit y" style="transform:rotate(-1deg)"><p>👤 <strong>Chris Holloway</strong><br>16 años. Dispuesto a llevar una cruz.</p></div>
+          <div class="postit b" style="transform:rotate(.9deg)"><p>⚠️ <strong>Los Ferrosomas</strong><br>El enemigo que no descansa. Sin piedad. Sin mente.</p></div>
+        </div>
       </div>
     </div>
 <div class="divider"><svg viewBox="0 0 900 14" preserveAspectRatio="none"><path d="M0 7 Q112 2 225 8 Q337 13 450 7 Q562 2 675 8 Q787 13 900 7" fill="none" stroke="#b0a690" stroke-width="1" opacity=".45"/></svg></div>
@@ -1370,28 +1292,26 @@ nav {
   <div class="wall">
     <div class="sh"><span class="sl">02 —</span><h2>Avances</h2></div>
     <div class="avances-grid">
-      <div class="avances-top">
-        <div class="avances-img-col">
-          <div class="aframe">
-            <div class="tape t-tl"></div>
-            <div class="tape t-tr"></div>
-            <img src="avance-ferrosomas1.png" alt="Avance Ferrosomas">
-            <p class="aframe-lbl">Ferrosomas — Exploradores &amp; Ofensivos · IA Concept Art</p>
-          </div>
-        </div>
-        <div class="at avances-text-col">
-          <span class="badge">✦ Concept art — Universo Prismal</span>
-          <h3>Los de afuera</h3>
-          <p>El ejército los llama Ferrosomas. Clasificados, descritos y jerarquizados en manuales que ningún Defensor termina de creer del todo.</p>
-          <p>No negocian. No retroceden. Avanzan con una persistencia fría y mecánica que resulta difícil de interpretar. Y lo que ves aquí es solo uno de sus tipos.</p>
-          <p>Los militares han identificado varias variantes. Con funciones distintas. Dentro de un fenómeno que aún no terminan de comprender.</p>
-        </div>
+      <div class="avances-img-col">
+        <div class="aframe">
+          <div class="tape t-tl"></div>
+          <div class="tape t-tr"></div>
+           <img src="avance-ferrosomas1.png" alt="Avance Ferrosomas">
+        <p class="aframe-lbl">Ferrosomas — Exploradores &amp; Ofensivos · IA Concept Art</p>
       </div>
-      <div class="avances-bottom-text">
-        <p>Y entre todos ellos, hay uno que siempre aparece primero.</p>
-        <p><strong>Exploradores.</strong> Rápidos. Inquietantemente rápidos. Aparecen donde no deberían estar, se desplazan entre ruinas y estructuras abandonadas con una facilidad perturbadora. No atacan de inmediato. Reconocen. Y cuando un Explorador encuentra algo que le interesa... los Defensores saben que lo prudente es prepararse. Porque lo que viene después es considerablemente peor.</p>
+      <div class="at">
+        <span class="badge">✦ Concept art — Universo Prismal</span>
+        <h3>Los de afuera</h3>
+        <p>El ejército los llama Ferrosomas. Clasificados, descritos y jerarquizados en manuales que ningún Defensor termina de creer del todo.</p>
+        <p>No negocian. No retroceden. Avanzan con una persistencia fría y mecánica que resulta difícil de interpretar. Y lo que ves aquí es solo uno de sus tipos.</p>
+        <p>Los militares han identificado varias variantes. Con funciones distintas. Dentro de un fenómeno que aún no terminan de comprender.</p>
       </div>
-      <div class="evolution-section">
+    </div>
+    <div class="avances-overflow">
+      <p>Y entre todos ellos, hay uno que siempre aparece primero.</p>
+      <p><strong>Exploradores.</strong> Rápidos. Inquietantemente rápidos. Aparecen donde no deberían estar, se desplazan entre ruinas y estructuras abandonadas con una facilidad perturbadora. No atacan de inmediato. Reconocen. Y cuando un Explorador encuentra algo que le interesa... los Defensores saben que lo prudente es prepararse. Porque lo que viene después es considerablemente peor.</p>
+    </div>
+    <div class="evolution-section">
       <p class="evolution-title">✦ Proceso de creación — Del boceto al concepto final</p>
       <div class="evolution-grid">
         <div class="evo-step">
@@ -1525,6 +1445,4 @@ nav {
   </div>
 </div>
 
-
-</body>
-</html>
+>
