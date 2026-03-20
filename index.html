@@ -104,22 +104,6 @@ nav{position:fixed!important;top:0!important;left:0!important;right:0!important;
 .postit::after{content:'';position:absolute;bottom:0;right:0;width:18px;height:18px;background:linear-gradient(225deg,var(--paper) 50%,rgba(180,160,0,.18) 50%)}
 .postit.b::after{background:linear-gradient(225deg,var(--paper) 50%,rgba(30,80,160,.12) 50%)}
 
-/* AVANCES */
-.avances-outer{background:var(--paper-alt);position:relative;z-index:1}
-.avances-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;padding-bottom:5rem}
-.aframe{background:var(--paper);border:2px solid var(--ink);padding:10px 10px 44px;box-shadow:6px 8px 0 var(--shadow-strong);transform:rotate(-.8deg);position:relative}
-.aframe img{width:100%;display:block;filter:sepia(5%) contrast(1.03)}
-.tape{position:absolute;height:20px;background:var(--tape);border-top:1px solid rgba(160,150,130,.4);border-bottom:1px solid rgba(160,150,130,.4);pointer-events:none;z-index:3}
-.t-tl{top:-10px;left:10%;width:58px;transform:rotate(-2deg)}
-.t-tr{top:-10px;right:12%;width:55px;transform:rotate(2deg)}
-.aframe-lbl{font-family:'Special Elite',cursive;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--pencil);text-align:center;margin-top:.9rem}
-.badge{display:inline-block;background:var(--rust);color:white;font-family:'Special Elite',cursive;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;padding:3px 12px;margin-bottom:1.5rem}
-.at h3{font-family:'Cinzel',serif;font-size:1.55rem;font-weight:700;letter-spacing:.1em;color:var(--ink);margin-bottom:.8rem;line-height:1.25}
-.at p{font-size:1.05rem;line-height:1.95;color:var(--ink-mid);margin-bottom:1rem}
-.ficha{display:flex;flex-direction:column;gap:.6rem;margin-top:1.6rem;border-left:2px solid var(--rust);padding-left:1.2rem}
-.ficha span{font-family:'Special Elite',cursive;font-size:.71rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mid)}
-.ficha strong{color:var(--rust)}
-
 /* PROYECTO */
 .proyecto-grid{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:start;padding-bottom:5rem}
 .pc p{font-size:1.05rem;line-height:1.9;color:var(--ink-mid);margin-bottom:1rem}
@@ -246,16 +230,6 @@ footer::after{content:'';position:absolute;top:-10px;left:0;right:0;height:20px;
     transform: none !important;
   }
 
-  /* AVANCES — 1 columna */
-  .avances-grid {
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
-    padding-bottom: 3.5rem;
-  }
-  .aframe {
-    transform: none;
-  }
-
   /* PROYECTO — 1 columna */
   .proyecto-grid {
     grid-template-columns: 1fr;
@@ -360,14 +334,6 @@ footer::after{content:'';position:absolute;top:-10px;left:0;right:0;height:20px;
   /* POST-ITS — 1 columna en móvil pequeño */
   .hs {
     grid-template-columns: 1fr;
-  }
-
-  /* AVANCES texto */
-  .at h3 {
-    font-size: 1.3rem;
-  }
-  .at p {
-    font-size: 1rem;
   }
 
   /* VOTE */
@@ -661,22 +627,6 @@ footer::after{content:'';position:absolute;top:-10px;left:0;right:0;height:20px;
   cursor: pointer;
 }
 
-/* Video step takes full width */
-.evo-step-video {
-  grid-column: 1 / -1;
-  max-width: 100%;
-}
-.evo-step-video .evo-frame {
-  transform: none !important;
-  padding-bottom: 10px;
-}
-.evo-step-video video {
-  min-height: 420px;
-}
-.evo-step-video .evo-label {
-  margin-top: .8rem;
-}
-
 /* FIX: notebook lines don't show through text on mobile */
 .wall, .wall-section, nav, footer,
 .tc, .vote-box, .postit, .aframe, .evo-frame,
@@ -686,60 +636,12 @@ footer::after{content:'';position:absolute;top:-10px;left:0;right:0;height:20px;
 }
 
 
-/* BIG VIDEO FRAME */
-.evo-frame-video {
-  background: #000;
-  border: 2px solid var(--ink);
-  box-shadow: 6px 8px 0 var(--shadow-strong);
-  position: relative;
-  overflow: hidden;
-}
-.evo-frame-video video {
-  width: 100%;
-  display: block;
-  min-height: 480px;
-  aspect-ratio: 16/9;
-  object-fit: contain;
-  background: #000;
-}
-.evo-step-video {
-  width: 100%;
-}
-.evolution-grid-bottom {
-  margin-top: 2.5rem;
-}
-
 /* Mobile video */
 @media (max-width: 768px) {
   .evo-frame-video video { min-height: 260px; }
 }
 @media (max-width: 480px) {
   .evo-frame-video video { min-height: 200px; }
-}
-
-
-/* AVANCES NEW LAYOUT */
-.avances-top {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: start;
-  margin-bottom: 2rem;
-}
-.avances-img-col { position: relative; }
-.avances-overflow {
-  width: 100%;
-  padding-bottom: 2rem;
-}
-.avances-overflow p {
-  font-size: 1.05rem;
-  line-height: 1.95;
-  color: var(--ink-mid);
-  margin-bottom: 1rem;
-}
-
-@media (max-width: 768px) {
-  .avances-top { grid-template-columns: 1fr; gap: 2rem; }
 }
 
 
@@ -753,26 +655,6 @@ footer::after{content:'';position:absolute;top:-10px;left:0;right:0;height:20px;
   position: relative;
 }
 
-
-/* ── AVANCES LAYOUT ── */
-.avances-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3.5rem;
-  align-items: start;
-  margin-bottom: 2rem;
-}
-.avances-img-col { position: relative; }
-.avances-overflow {
-  width: 100%;
-  padding-bottom: 1.5rem;
-}
-.avances-overflow p {
-  font-size: 1.05rem;
-  line-height: 1.95;
-  color: var(--ink-mid);
-  margin-bottom: 1rem;
-}
 
 /* ── EVOLUTION ── */
 .evolution-section { padding-bottom: 5rem; }
@@ -830,24 +712,6 @@ footer::after{content:'';position:absolute;top:-10px;left:0;right:0;height:20px;
   color: var(--faded);
   padding-top: 3rem;
   align-self: center;
-}
-
-/* Video — bigger but contained */
-.evolution-video-wrap { width: 100%; }
-.evo-frame-video {
-  background: #000;
-  border: 2px solid var(--ink);
-  box-shadow: 6px 8px 0 var(--shadow-strong);
-  overflow: hidden;
-  position: relative;
-}
-.evo-frame-video video {
-  width: 100%;
-  display: block;
-  aspect-ratio: 16/9;
-  object-fit: contain;
-  background: #000;
-  min-height: 380px;
 }
 
 /* ── AVATAR PHOTO ── */
@@ -1189,6 +1053,43 @@ nav {
   margin-bottom: 1.5rem;
 }
 
+
+/* ── AVANCES ── */
+.av-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: start;
+  margin-bottom: 1.5rem;
+}
+.av-img { position: relative; }
+.av-text { }
+.av-text h3 { font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: .08em; color: var(--ink); margin-bottom: .8rem; }
+.av-text p { font-size: 1.05rem; line-height: 1.9; color: var(--ink-mid); margin-bottom: .9rem; }
+.av-bottom { margin-bottom: 3.5rem; }
+.av-bottom p { font-size: 1.05rem; line-height: 1.9; color: var(--ink-mid); margin-bottom: .9rem; }
+
+/* ── EVOLUTION ── */
+.evolution-section { padding-bottom: 5rem; }
+.evolution-title { font-family: 'Special Elite', cursive; font-size: .76rem; letter-spacing: .25em; text-transform: uppercase; color: var(--rust); margin-bottom: 1.8rem; }
+.evo-imgs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+.evo-col { display: flex; flex-direction: column; gap: .7rem; }
+.evo-lbl { font-family: 'Special Elite', cursive; font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--pencil); }
+.evo-video { width: 100%; }
+.evo-video video { width: 100%; display: block; aspect-ratio: 16/9; background: #000; border: 2px solid var(--ink); box-shadow: 5px 6px 0 var(--shadow-strong); }
+.evo-video .evo-lbl { margin-top: .7rem; }
+
+/* ── RESPONSIVE AVANCES ── */
+@media (max-width: 768px) {
+  .av-top { grid-template-columns: 1fr; gap: 2rem; }
+  .evo-imgs { grid-template-columns: 1fr; gap: 1.5rem; }
+}
+
 </style>
 </head>
 <body>
@@ -1291,15 +1192,17 @@ nav {
 <div class="wall-section avances-outer" id="avances">
   <div class="wall">
     <div class="sh"><span class="sl">02 —</span><h2>Avances</h2></div>
-    <div class="avances-grid">
-      <div class="avances-img-col">
+    <!-- imagen + texto lado a lado, texto continúa abajo -->
+    <div class="av-top">
+      <div class="av-img">
         <div class="aframe">
           <div class="tape t-tl"></div>
           <div class="tape t-tr"></div>
-           <img src="avance-ferrosomas1.png" alt="Avance Ferrosomas">
+          <img src="avance-ferrosomas1.png" alt="Avance Ferrosomas"/>
+        </div>
         <p class="aframe-lbl">Ferrosomas — Exploradores &amp; Ofensivos · IA Concept Art</p>
       </div>
-      <div class="at">
+      <div class="av-text">
         <span class="badge">✦ Concept art — Universo Prismal</span>
         <h3>Los de afuera</h3>
         <p>El ejército los llama Ferrosomas. Clasificados, descritos y jerarquizados en manuales que ningún Defensor termina de creer del todo.</p>
@@ -1307,38 +1210,40 @@ nav {
         <p>Los militares han identificado varias variantes. Con funciones distintas. Dentro de un fenómeno que aún no terminan de comprender.</p>
       </div>
     </div>
-    <div class="avances-overflow">
+    <!-- texto continúa abajo, ancho completo -->
+    <div class="av-bottom">
       <p>Y entre todos ellos, hay uno que siempre aparece primero.</p>
       <p><strong>Exploradores.</strong> Rápidos. Inquietantemente rápidos. Aparecen donde no deberían estar, se desplazan entre ruinas y estructuras abandonadas con una facilidad perturbadora. No atacan de inmediato. Reconocen. Y cuando un Explorador encuentra algo que le interesa... los Defensores saben que lo prudente es prepararse. Porque lo que viene después es considerablemente peor.</p>
     </div>
+
+    <!-- proceso de creación -->
     <div class="evolution-section">
       <p class="evolution-title">✦ Proceso de creación — Del boceto al concepto final</p>
-      <div class="evolution-grid">
-        <div class="evo-step">
-          <div class="evo-frame" style="transform:rotate(-1.5deg)">
-            <div class="tape-evo"></div>
-            <img src="boceto.png" alt="Boceto original" style="width:100%;display:block;"/>
+      <!-- dos imágenes lado a lado, mismo tamaño que avance-ferrosomas1 -->
+      <div class="evo-imgs">
+        <div class="evo-col">
+          <div class="aframe" style="transform:rotate(-1deg)">
+            <div class="tape t-tl"></div>
+            <div class="tape t-tr"></div>
+            <img src="boceto.png" alt="Boceto original"/>
           </div>
-          <div class="evo-label"><strong>01 — Boceto</strong> Lápiz y papel. Trazos a mano.</div>
+          <p class="evo-lbl"><strong>01 — Boceto</strong> · Lápiz y papel. Trazos a mano.</p>
         </div>
-        <div class="evo-arrow">→</div>
-        <div class="evo-step">
-          <div class="evo-frame" style="transform:rotate(.5deg)">
-            <div class="tape-evo" style="transform:translateX(-50%) rotate(1.5deg)"></div>
-             <img src="evolucion-1.png" alt="Evolución">
+        <div class="evo-col">
+          <div class="aframe" style="transform:rotate(.8deg)">
+            <div class="tape t-tl"></div>
+            <div class="tape t-tr"></div>
+            <img src="evolucion-1.png" alt="Concepto IA — Sora"/>
           </div>
-          <div class="evo-label"><strong>02 — Concepto IA</strong> Generado con <em>Sora</em>.</div>
+          <p class="evo-lbl"><strong>02 — Concepto IA</strong> · Generado con <em>Sora</em>.</p>
         </div>
       </div>
-      <div class="evolution-video-wrap">
-        <div class="evo-frame-video">
-         <video controls autoplay muted loop>
-          <source src="ferrosomas.mp4" type="video/mp4">
-         </video>
-        </div>
-        <div class="evo-label" style="text-align:center;margin-top:.8rem">
-          <strong>03 — Animación IA</strong> Animado con <em>Seedance</em>. El concepto cobra vida.
-        </div>
+      <!-- video abajo, mismo ancho que las dos imágenes juntas -->
+      <div class="evo-video">
+        <video controls preload="metadata">
+          <source src="ferrosomas.mp4" type="video/mp4"/>
+        </video>
+        <p class="evo-lbl" style="text-align:center"><strong>03 — Animación IA</strong> · Animado con <em>Seedance</em>. El concepto cobra vida.</p>
       </div>
     </div>
   </div>
