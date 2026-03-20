@@ -1054,21 +1054,17 @@ nav {
 }
 
 
-/* ── AVANCES ── */
-.av-top {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2.5rem;
-  align-items: start;
-  margin-bottom: 1.5rem;
+/* ── AVANCES FLOAT LAYOUT ── */
+.av-float-wrap { overflow: hidden; margin-bottom: 3rem; }
+.av-float-img { float: left; width: 48%; margin-right: 2.5rem; margin-bottom: 1rem; }
+.av-float-img .aframe { width: 100%; }
+.av-float-img .aframe img { width: 100%; height: auto; display: block; }
+.av-h3 { font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: .08em; color: var(--ink); margin-bottom: .8rem; margin-top: .4rem; }
+.av-p { font-size: 1.05rem; line-height: 1.9; color: var(--ink-mid); margin-bottom: .9rem; }
+
+@media (max-width: 768px) {
+  .av-float-img { float: none; width: 100%; margin-right: 0; }
 }
-.av-img { position: relative; width: 100%; }
-.av-img .aframe { width: 100%; }
-.av-img .aframe img { width: 100%; height: auto; display: block; }
-.av-text h3 { font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: .08em; color: var(--ink); margin-bottom: .8rem; }
-.av-text p { font-size: 1.05rem; line-height: 1.9; color: var(--ink-mid); margin-bottom: .9rem; }
-.av-bottom { margin-bottom: 3.5rem; }
-.av-bottom p { font-size: 1.05rem; line-height: 1.9; color: var(--ink-mid); margin-bottom: .9rem; }
 
 /* ── EVOLUTION ── */
 .evolution-section { padding-bottom: 5rem; }
@@ -1196,9 +1192,9 @@ nav {
 <div class="wall-section avances-outer" id="avances">
   <div class="wall">
     <div class="sh"><span class="sl">02 —</span><h2>Avances</h2></div>
-    <!-- imagen + texto lado a lado, texto continúa abajo -->
-    <div class="av-top">
-      <div class="av-img">
+    <!-- float layout: imagen flota izquierda, texto fluye al lado y debajo -->
+    <div class="av-float-wrap">
+      <div class="av-float-img">
         <div class="aframe">
           <div class="tape t-tl"></div>
           <div class="tape t-tr"></div>
@@ -1206,18 +1202,13 @@ nav {
         </div>
         <p class="aframe-lbl">Ferrosomas — Exploradores &amp; Ofensivos · IA Concept Art</p>
       </div>
-      <div class="av-text">
-        <span class="badge">✦ Concept art — Universo Prismal</span>
-        <h3>Los de afuera</h3>
-        <p>El ejército los llama Ferrosomas. Clasificados, descritos y jerarquizados en manuales que ningún Defensor termina de creer del todo.</p>
-        <p>No negocian. No retroceden. Avanzan con una persistencia fría y mecánica que resulta difícil de interpretar. Y lo que ves aquí es solo uno de sus tipos.</p>
-        <p>Los militares han identificado varias variantes. Con funciones distintas. Dentro de un fenómeno que aún no terminan de comprender.</p>
-      </div>
-    </div>
-    <!-- texto continúa abajo, ancho completo -->
-    <div class="av-bottom">
-      <p>Y entre todos ellos, hay uno que siempre aparece primero.</p>
-      <p><strong>Exploradores.</strong> Rápidos. Inquietantemente rápidos. Aparecen donde no deberían estar, se desplazan entre ruinas y estructuras abandonadas con una facilidad perturbadora. No atacan de inmediato. Reconocen. Y cuando un Explorador encuentra algo que le interesa... los Defensores saben que lo prudente es prepararse. Porque lo que viene después es considerablemente peor.</p>
+      <span class="badge">✦ Concept art — Universo Prismal</span>
+      <h3 class="av-h3">Los de afuera</h3>
+      <p class="av-p">El ejército los llama Ferrosomas. Clasificados, descritos y jerarquizados en manuales que ningún Defensor termina de creer del todo.</p>
+      <p class="av-p">No negocian. No retroceden. Avanzan con una persistencia fría y mecánica que resulta difícil de interpretar. Y lo que ves aquí es solo uno de sus tipos.</p>
+      <p class="av-p">Los militares han identificado varias variantes. Con funciones distintas. Dentro de un fenómeno que aún no terminan de comprender.</p>
+      <p class="av-p">Y entre todos ellos, hay uno que siempre aparece primero.</p>
+      <p class="av-p"><strong>Exploradores.</strong> Rápidos. Inquietantemente rápidos. Aparecen donde no deberían estar, se desplazan entre ruinas y estructuras abandonadas con una facilidad perturbadora. No atacan de inmediato. Reconocen. Y cuando un Explorador encuentra algo que le interesa... los Defensores saben que lo prudente es prepararse. Porque lo que viene después es considerablemente peor.</p>
     </div>
 
     <!-- proceso de creación -->
