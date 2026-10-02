@@ -1,0 +1,27 @@
+{
+  "name": "prismal",
+  "version": "0.8.0",
+  "private": true,
+  "description": "PRISMAL — public production portal for an original science-fiction universe in development.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "tsc --noEmit",
+    "assets": "node scripts/optimize-assets.mjs"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/inter-tight": "^5.3.0",
+    "next": "^16.3.7",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "sharp": "^0.35.5",
+    "typescript": "^7.0.2"
+  }
+}
