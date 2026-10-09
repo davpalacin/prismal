@@ -66,6 +66,85 @@ const roof = (rise, Wd) => (b) => {
   }
 };
 
+
+// Pared con el borde superior cortado en diagonal (pendiente k = tan del tejado):
+// altura 1 m en x=0 y 1+k·x en el resto; coincide con la línea del tejado.
+const gable = (k, W) => (b) => {
+  const H = (x) => 1 + k * x - 0.04;
+  const poly = (x0, x1, t) => [[x0, 0, t], [x1, 0, t], [x1, H(x1), t], [x0, H(x0), t]];
+  b.prism(poly(0, W, 0.03), [0, 0, 1], 0.06, DARK);
+  for (let i = 0; i < W / STEP; i++) {
+    const t = i % 2 ? 0.045 : 0.05;
+    b.prism(poly(i * STEP + 0.004, (i + 1) * STEP - 0.004, t), [0, 0, 1], 2 * t, WOOD[i % 3]);
+  }
+  b.box(0, 0.14, -0.058, W, 0.26, 0.058, DARK);
+};
+
+// Esquinas de tejado de 1 × 1 m con los aleros en x=0 y z=0 (misma pendiente y
+// planos que el tejado normal, así las aristas inclinadas encajan con él).
+//  - exterior (cumbrera diagonal): altura = r·mín(x,z), vértice alto en (1,r,1)
+//  - interior (valle diagonal):    altura = r·máx(x,z)
+const UP = [0, 1, 0];
+const cornerRoof = (r, outer) => (b) => {
+  const N = 5, g = 0.006, sh = -0.025, h = (v) => r * v;
+  const tri = outer
+    ? [[[0, sh, 0], [0, sh, 1], [1, r + sh, 1]], [[0, sh, 0], [1, sh, 0], [1, r + sh, 1]]]
+    : [[[0, sh, 0], [1, r + sh, 0], [1, r + sh, 1]], [[0, sh, 0], [0, r + sh, 1], [1, r + sh, 1]]];
+  tri.forEach((t) => b.prism(t, UP, 0.04, DARK));
+  for (let i = 0; i < N; i++) {
+    const a = i / N + g, c = (i + 1) / N - g;
+    const rows = outer
+      ? [[[a, h(a), a], [a, h(a), 1], [c, h(c), 1], [c, h(c), c]], [[a, h(a), a], [1, h(a), a], [1, h(c), c], [c, h(c), c]]]
+      : [[[a, h(a), 0], [a, h(a), a], [c, h(c), c], [c, h(c), 0]], [[0, h(a), a], [a, h(a), a], [c, h(c), c], [0, h(c), c]]];
+    rows.forEach((p, j) => b.prism(p, UP, 0.05, SHINGLE[(i + j) % 3]));
+  }
+  if (outer) b.obox([0.028, 0, -0.028], [1, r, 1], [-0.057, 0, 0.057], [0, 0.045, 0], DARK);
+};
+
+// Puerta 1 × 2 m: marco con la hoja entreabierta.
+const door = (b) => {
+  b.box(0, 0, -0.07, 0.08, 2, 0.07, WOOD[1]);
+  b.box(0.92, 0, -0.07, 1, 2, 0.07, WOOD[1]);
+  b.box(0, 1.85, -0.07, 1, 2, 0.07, WOOD[0]);
+  const a = Math.PI * 0.36, d = [Math.cos(a), 0, Math.sin(a)], n = [-Math.sin(a), 0, Math.cos(a)], w = 0.84;
+  const at = (u, y, v) => [0.08 + d[0] * u + n[0] * v, y, d[2] * u + n[2] * v];
+  for (let i = 0; i < 3; i++) {
+    const u0 = (i * w) / 3 + 0.004, u1 = ((i + 1) * w) / 3 - 0.004;
+    b.obox(at(u0, 0, 0), [d[0] * (u1 - u0), 0, d[2] * (u1 - u0)], [0, 1.84, 0], [n[0] * 0.05, 0, n[2] * 0.05], WOOD[(i + 1) % 3]);
+  }
+  for (const y of [0.3, 1.4]) b.obox(at(0, y, 0.05), [d[0] * w, 0, d[2] * w], [0, 0.1, 0], [n[0] * 0.02, 0, n[2] * 0.02], DARK);
+};
+
+// Pared de vidrio de 0,5 × 1 m con marco de madera.
+const glass = (b) => {
+  b.box(0, 0, -0.05, 0.05, 1, 0.05, WOOD[1]);
+  b.box(0.45, 0, -0.05, 0.5, 1, 0.05, WOOD[1]);
+  b.box(0.05, 0, -0.05, 0.45, 0.06, 0.05, WOOD[0]);
+  b.box(0.05, 0.94, -0.05, 0.45, 1, 0.05, WOOD[0]);
+  b.layer = 1;
+  b.box(0.05, 0.06, -0.012, 0.45, 0.94, 0.012, '#ffffff');
+  b.layer = 0;
+};
+
+// Antorcha: palo con la cabeza de trapo y una llama (capa 2, sin sombreado).
+const torch = (b) => {
+  b.box(-0.025, 0, -0.025, 0.025, 0.55, 0.025, WOOD[1]);
+  b.box(-0.05, 0.5, -0.05, 0.05, 0.62, 0.05, DARK);
+  b.layer = 2;
+  const pyr = (h, w, c) => b.pyramid([[-w, 0.62, -w], [w, 0.62, -w], [w, 0.62, w], [-w, 0.62, w]], [0, 0.62 + h, 0], c);
+  pyr(0.27, 0.07, '#ff7a1a');
+  pyr(0.17, 0.04, '#ffd45a');
+  b.layer = 0;
+};
+
+// Altura de la superficie caminable de piezas en rampa (coordenadas locales).
+export function rampHeight(r, lx, lz) {
+  const e = 1e-6;
+  if (r.kind === 'roof') return lx >= -e && lx <= RUN + e && lz >= -e && lz <= r.w + e ? (r.rise / RUN) * lx : null;
+  if (lx < -e || lx > 1 + e || lz < -e || lz > 1 + e) return null;
+  return r.kind === 'hip' ? r.rise * Math.min(lx, lz) : r.rise * Math.max(lx, lz);
+}
+
 export const PIECES = {};
 const corners = ([x, y, z]) => [0, x].flatMap((a) => [0, y].flatMap((c) => [0, z].map((d) => [a, c, d])));
 
@@ -78,34 +157,69 @@ function grid(size) {
   return pts;
 }
 
-function add(id, label, size, build, keys = corners(size), anchors = grid(size)) {
-  PIECES[id] = { id, label, size, build, keys, anchors };
+function add(id, label, size, build, o = {}) {
+  PIECES[id] = { id, label, size, build, keys: o.keys || corners(size), anchors: o.anchors || grid(size),
+    solid: o.solid || [], ramp: o.ramp || null, light: o.light || null };
 }
 // Tejado: los cuatro bordes paralelos al ancho (alero, cumbrera y sus bases).
 const roofAnchors = (rise, W) => [[0, 0], [RUN, 0], [0, rise], [RUN, rise]]
   .flatMap(([x, y]) => grid([0, 0, W]).map(([, , z]) => [x, y, z]));
-// Diagonal: las cuatro esquinas del módulo y el centro del refuerzo.
-const diagAnchors = (L) => [[0, 0, 0], [L, 0, 0], [0, L, 0], [L, L, 0], [L / 2, L / 2, 0]];
+const roofKeys = (rise, W) => [[0, 0, 0], [0, 0, W], [RUN, rise, 0], [RUN, rise, W]];
+// Pared con corte diagonal: bordes de la silueta.
+const gableAnchors = (k, W) => {
+  const top = 1 + k * W, pts = [];
+  for (let x = 0; x <= W + 1e-9; x += 0.5) pts.push([x, 0, 0]);
+  for (let y = 0.5; y < 1 - 1e-9; y += 0.5) pts.push([0, y, 0]);
+  for (let y = 0.5; y < top - 1e-9; y += 0.5) pts.push([W, y, 0]);
+  return pts.concat([[0, 1, 0], [W, top, 0], [W / 2, 1 + (k * W) / 2, 0]]);
+};
+const cornerAnchors = (r, outer) => grid([1, 0, 1]).concat(outer
+  ? [[1, r, 1], [0.5, r / 2, 1], [1, r / 2, 0.5], [0.5, r / 2, 0.5]]
+  : [[1, r, 0], [0, r, 1], [1, r, 1], [1, r, 0.5], [0.5, r, 1]]);
+const cornerKeys = (r, outer) => (outer ? [[0, 0, 0], [1, 0, 0], [0, 0, 1], [1, r, 1]] : [[0, 0, 0], [1, r, 0], [0, r, 1], [1, r, 1]]);
 
-// Filas del menú: [nombre, [[id, etiqueta, size, build, keys?], ...]]
+// Cajas macizas locales [x0,y0,z0,x1,y1,z1] para colisión al caminar.
+const slab = (W, H, T = 0.05) => [[0, 0, -T, W, H, T]];
+
+// Filas del menú: [nombre, [[id, etiqueta, size, build, opciones], ...]]
 const rise26 = 0.5, rise45 = 1;
+const roofItem = (id, label, rise, W) => [id, label, [RUN, rise, W], roof(rise, W),
+  { keys: roofKeys(rise, W), anchors: roofAnchors(rise, W), ramp: { kind: 'roof', rise, w: W } }];
+const gableItem = (id, label, k, W) => [id, label, [W, 1 + k * W, 0], gable(k, W),
+  { keys: [[0, 0, 0], [W, 0, 0], [W, 1 + k * W, 0], [0, 1, 0]], anchors: gableAnchors(k, W), solid: slab(W, 1) }];
+const cornerItem = (id, label, r, outer) => [id, label, [1, r, 1], cornerRoof(r, outer),
+  { keys: cornerKeys(r, outer), anchors: cornerAnchors(r, outer), ramp: { kind: outer ? 'hip' : 'valley', rise: r } }];
+const diagItem = (id, label, L) => [id, label, [L, L, 0], diag(L),
+  { keys: [[0, 0, 0], [L, L, 0]], anchors: [[0, 0, 0], [L, 0, 0], [0, L, 0], [L, L, 0], [L / 2, L / 2, 0]] }];
+
 export const MENU = [
-  ['Suelo', [['floor1', '1×1', [1, 0, 1], floor(1)], ['floor05', '0,5×0,5', [0.5, 0, 0.5], floor(0.5)]]],
-  ['Pared', [['wall1', '1×1', [1, 1, 0], wall(1)], ['wall05', '0,5×1', [0.5, 1, 0], wall(0.5)]]],
-  ['Columna', [['col1', '1 m', [0, 1, 0], column(1)], ['col05', '0,5 m', [0, 0.5, 0], column(0.5)]]],
-  ['Viga', [['beam1', '1 m', [1, 0, 0], beam(1)], ['beam05', '0,5 m', [0.5, 0, 0], beam(0.5)]]],
-  ['Tablón horiz.', [['ph1', '1 m', [1, 0, 0], plankH(1)], ['ph05', '0,5 m', [0.5, 0, 0], plankH(0.5)]]],
-  ['Tablón vert.', [['pv1', '1 m', [0, 1, 0], plankV(1)], ['pv05', '0,5 m', [0, 0.5, 0], plankV(0.5)]]],
-  ['Diagonal', [['dg1', '1 m', [1, 1, 0], diag(1), [[0, 0, 0], [1, 1, 0]]],
-                ['dg05', '0,5 m', [0.5, 0.5, 0], diag(0.5), [[0, 0, 0], [0.5, 0.5, 0]]]]],
-  ['Tejado 26°', [['r26a', '1 m', [RUN, rise26, 1], roof(rise26, 1), [[0, 0, 0], [0, 0, 1], [RUN, rise26, 0], [RUN, rise26, 1]]],
-                  ['r26b', '0,5 m', [RUN, rise26, 0.5], roof(rise26, 0.5), [[0, 0, 0], [0, 0, 0.5], [RUN, rise26, 0], [RUN, rise26, 0.5]]]]],
-  ['Tejado 45°', [['r45a', '1 m', [RUN, rise45, 1], roof(rise45, 1), [[0, 0, 0], [0, 0, 1], [RUN, rise45, 0], [RUN, rise45, 1]]],
-                  ['r45b', '0,5 m', [RUN, rise45, 0.5], roof(rise45, 0.5), [[0, 0, 0], [0, 0, 0.5], [RUN, rise45, 0], [RUN, rise45, 0.5]]]]],
+  ['Suelo', [['floor1', '1×1', [1, 0, 1], floor(1), { solid: [[0, 0, 0, 1, 0.1, 1]] }],
+             ['floor05', '0,5×0,5', [0.5, 0, 0.5], floor(0.5), { solid: [[0, 0, 0, 0.5, 0.1, 0.5]] }]]],
+  ['Pared', [['wall1', '1×1', [1, 1, 0], wall(1), { solid: slab(1, 1) }],
+             ['wall05', '0,5×1', [0.5, 1, 0], wall(0.5), { solid: slab(0.5, 1) }]]],
+  ['Pared corte 26°', [gableItem('g26a', '1 m', 0.5, 1), gableItem('g26b', '0,5 m', 0.5, 0.5)]],
+  ['Pared corte 45°', [gableItem('g45a', '1 m', 1, 1), gableItem('g45b', '0,5 m', 1, 0.5)]],
+  ['Puerta', [['door', '1×2', [1, 2, 0], door,
+               { solid: [[0, 0, -0.07, 0.08, 2, 0.07], [0.92, 0, -0.07, 1, 2, 0.07], [0, 1.85, -0.07, 1, 2, 0.07]] }]]],
+  ['Pared vidrio', [['gl05', '0,5×1', [0.5, 1, 0], glass, { solid: slab(0.5, 1) }]]],
+  ['Columna', [['col1', '1 m', [0, 1, 0], column(1), { solid: [[-0.06, 0, -0.06, 0.06, 1, 0.06]] }],
+               ['col05', '0,5 m', [0, 0.5, 0], column(0.5), { solid: [[-0.06, 0, -0.06, 0.06, 0.5, 0.06]] }]]],
+  ['Viga', [['beam1', '1 m', [1, 0, 0], beam(1), { solid: [[0, -0.06, -0.06, 1, 0.06, 0.06]] }],
+            ['beam05', '0,5 m', [0.5, 0, 0], beam(0.5), { solid: [[0, -0.06, -0.06, 0.5, 0.06, 0.06]] }]]],
+  ['Tablón horiz.', [['ph1', '1 m', [1, 0, 0], plankH(1), { solid: [[0, -0.1, -0.03, 1, 0.1, 0.03]] }],
+                     ['ph05', '0,5 m', [0.5, 0, 0], plankH(0.5), { solid: [[0, -0.1, -0.03, 0.5, 0.1, 0.03]] }]]],
+  ['Tablón vert.', [['pv1', '1 m', [0, 1, 0], plankV(1), { solid: [[-0.1, 0, -0.03, 0.1, 1, 0.03]] }],
+                    ['pv05', '0,5 m', [0, 0.5, 0], plankV(0.5), { solid: [[-0.1, 0, -0.03, 0.1, 0.5, 0.03]] }]]],
+  ['Diagonal', [diagItem('dg1', '1 m', 1), diagItem('dg05', '0,5 m', 0.5)]],
+  ['Tejado 26°', [roofItem('r26a', '1 m', rise26, 1), roofItem('r26b', '0,5 m', rise26, 0.5)]],
+  ['Tejado 45°', [roofItem('r45a', '1 m', rise45, 1), roofItem('r45b', '0,5 m', rise45, 0.5)]],
+  ['Esquina ext. 26°', [cornerItem('h26', '1×1', rise26, true)]],
+  ['Esquina int. 26°', [cornerItem('v26', '1×1', rise26, false)]],
+  ['Esquina ext. 45°', [cornerItem('h45', '1×1', rise45, true)]],
+  ['Esquina int. 45°', [cornerItem('v45', '1×1', rise45, false)]],
+  ['Antorcha', [['torch', '0,9 m', [0, 0.9, 0], torch, { light: [0, 0.75, 0] }]]],
 ];
-for (const [name, items] of MENU) for (const [id, label, size, build, keys] of items) add(id, name + ' ' + label, size, build, keys);
-for (const L of [1, 0.5]) PIECES[L === 1 ? 'dg1' : 'dg05'].anchors = diagAnchors(L);
-for (const [id, rise, W] of [['r26a', rise26, 1], ['r26b', rise26, 0.5], ['r45a', rise45, 1], ['r45b', rise45, 0.5]]) PIECES[id].anchors = roofAnchors(rise, W);
+for (const [name, items] of MENU) for (const [id, label, size, build, o] of items) add(id, name + ' ' + label, size, build, o);
 
 const geoms = {};
 export function geometryOf(id) {

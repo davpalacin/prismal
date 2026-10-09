@@ -10,22 +10,32 @@ Para recompilar tras editar `src/` (opcional): `npm install && npm run build` �
 ## Controles
 | Acción | Control |
 |---|---|
-| Elegir pieza | Menú con miniatura de cada pieza (suelo, pared, columna, viga, tablón, diagonal, tejado 26°/45°; en 1 m y 0,5 m) |
+| Caminar / correr / saltar | `WASD` o flechas / `Shift` / `Espacio` |
+| Vista 1ª / 3ª persona | `V` o botón |
+| Mirar | Arrastrar con el ratón (clic corto = colocar) |
+| Acariciar al perrito | `E` (cerca de él) |
+| Elegir pieza | Menú con miniaturas |
 | Colocar | Clic izquierdo (verde = válida, rojo = inválida) |
 | Anclaje de la pieza | `Q` (siguiente), `Mayús+Q` (anterior) o ◀ ▶ |
 | Girar (8 pasos de 45°) | Rueda del ratón, `R` / `Mayús+R` o botón |
 | Ajuste 1 m / 0,5 m (rejilla del suelo) | `G` o botones |
 | Eliminar | `X` o botón; clic sobre la pieza resaltada en rojo; `Esc` vuelve a colocar |
-| Orbitar / desplazar | Arrastrar izq. / clic der. o `Mayús`+arrastrar |
-| Zoom | `Ctrl`+rueda, botón central arrastrando, `+` / `−` o botones (en modo eliminar, la rueda hace zoom) |
+| Zoom (3ª persona) | `Ctrl`+rueda, `+` / `−` o botones (en modo eliminar, la rueda) |
+
+## Mundo y piezas
+- Noche con luna llena y niebla; mapa de 50 × 50 m con un claro central de 9 m de radio y bosque aleatorio alrededor.
+- Personaje: constructor anciano de 1,5 m con pelo y barba blancos. Salto de ~1,15 m (sube a una pared de 1 m); sube solo desniveles de hasta 0,5 m. Suelos, paredes, columnas, vigas, tablones, puertas y árboles son sólidos; tejados y esquinas de tejado se pueden recorrer como rampas.
+- Perrito dorado que te sigue por detrás a la derecha, se aparta si estorba, mueve la cola y se deja acariciar.
+- Piezas nuevas: paredes con corte diagonal 26° y 45° (1 y 0,5 m), esquinas de tejado exterior (cumbrera) e interior (valle) de 1 × 1 m en 26° y 45°, puerta de 1 × 2 m, pared de vidrio de 0,5 × 1 m y antorcha.
+- Antorchas: iluminan con 8 luces puntuales reutilizadas (las 8 más cercanas a la cámara); las demás conservan la llama pero no luz.
 
 ## Anclajes y encaje
 - Mapa de 50 × 50 m, altura máxima 10 m.
-- Cada pieza tiene varios puntos de anclaje en la rejilla de 0,5 m (esquinas, bordes, caras; el tejado, sus 4 bordes; la diagonal, las 4 esquinas y el centro).
+- Cada pieza tiene varios puntos de anclaje en la rejilla de 0,5 m (esquinas, bordes, caras; tejado: sus 4 bordes; diagonal: 4 esquinas y centro; pared con corte: su silueta).
 - El ratón elige el anclaje de una pieza ya colocada más cercano (radio 26 px, punto amarillo); si no hay ninguno, el vértice de la rejilla del suelo.
-- La pieza en vista previa se coloca de modo que **su** anclaje (`Q`) coincida con ese punto, y gira sobre él. Así un tejado se une a la parte alta de una pared o columna, una viga a un lado de un suelo, etc.
-- Medidas: piezas de 1 y 0,5 m; tejados con proyección horizontal de 1 m (26° → 0,5 m de altura, 26,57°; 45° → 1 m).
-- No se admiten duplicados (misma pieza con los mismos puntos de definición), ni piezas fuera del terreno o por debajo del suelo.
+- La pieza en vista previa se coloca de modo que **su** anclaje (`Q`) coincida con ese punto, y gira sobre él.
+- Tejados con proyección horizontal de 1 m (26° → 0,5 m de altura, 26,57°; 45° → 1 m). Las paredes con corte siguen exactamente esa pendiente y las esquinas comparten sus planos con el tejado normal, por lo que encajan.
+- No se admiten duplicados, ni piezas fuera del terreno o por debajo del suelo.
 
 ## Rendimiento
-Geometrías primitivas con color por vértice, un único material compartido para las piezas (geometría compartida por tipo), hierba en un solo `InstancedMesh`, una luz hemisférica + una direccional sin sombras, y renderizado solo cuando cambia la escena o la cámara.
+Geometrías primitivas con color por vértice, un único material compartido para las piezas (geometría compartida por tipo), hierba en un solo `InstancedMesh`, una luz hemisférica + una direccional sin sombras, y bucle de render continuo (hay personaje, perro y luces animadas).

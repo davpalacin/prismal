@@ -2,7 +2,7 @@ import { BufferGeometry, DirectionalLight, HemisphereLight, Mesh, PerspectiveCam
 
 // Genera una miniatura (data URL) por pieza con un renderer temporal que se
 // destruye al terminar: se hace una sola vez al arrancar.
-export function makeThumbs(ids, geometryOf, material) {
+export function makeThumbs(ids, geometryOf, materialFor) {
   const r = new WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
   r.setPixelRatio(1);
   r.setSize(112, 112);
@@ -11,11 +11,12 @@ export function makeThumbs(ids, geometryOf, material) {
   const sun = new DirectionalLight('#fff0d4', 1.9);
   sun.position.set(3, 6, 2);
   sc.add(sun);
-  const mesh = new Mesh(new BufferGeometry(), material);
+  const mesh = new Mesh(new BufferGeometry());
   sc.add(mesh);
   const cam = new PerspectiveCamera(30, 1, 0.1, 50), dir = new Vector3(0.8, 0.65, 1).normalize(), out = {};
   for (const id of ids) {
     const g = (mesh.geometry = geometryOf(id)), s = g.boundingSphere;
+    mesh.material = materialFor(g);
     cam.position.copy(s.center).addScaledVector(dir, (s.radius / Math.sin(Math.PI / 12)) * 1.02);
     cam.lookAt(s.center);
     r.render(sc, cam);
