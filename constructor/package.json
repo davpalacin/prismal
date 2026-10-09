@@ -1,0 +1,12 @@
+{
+  "name": "constructor-modular",
+  "private": true,
+  "description": "Prototipo 3D de construcción modular (Three.js)",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --minify --format=iife --outfile=dist/app.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.186.1"
+  }
+}
