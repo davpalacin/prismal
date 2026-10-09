@@ -1,7 +1,9 @@
 import { BufferGeometry, Color, Float32BufferAttribute } from 'three';
 
 // Constructor mínimo de geometría con color por vértice y normales planas.
-// Tres capas = tres materiales: 0 madera, 1 vidrio, 2 llama. Todas las piezas
+// Cuatro capas = cuatro materiales: 0 madera, 1 vidrio, 2 llama, 3 tejas.
+// Las UV se proyectan en el plano de cada cara (1 unidad = 1 m) con la veta
+// de la textura alineada con `grain`. Todas las piezas
 // de un mismo tipo comparten un único BufferGeometry.
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -10,8 +12,9 @@ const mean = (ps) => [0, 1, 2].map((i) => ps.reduce((s, p) => s + p[i], 0) / ps.
 
 export class Builder {
   constructor() {
-    this.layers = [0, 1, 2].map(() => ({ pos: [], nor: [], col: [] }));
+    this.layers = [0, 1, 2, 3].map(() => ({ pos: [], nor: [], col: [], uv: [] }));
     this.layer = 0;
+    this.grain = [1, 0, 0];   // dirección de la veta (para las UV)
   }
 
   // Caja alineada a los ejes entre dos esquinas.
@@ -44,12 +47,19 @@ export class Builder {
     n = n.map((v) => v / l);
     if (dot(n, sub(pts[0], inside)) < 0) n = n.map((v) => -v);
     const rgb = new Color(color), L = this.layers[this.layer];
+    // base tangente/bitangente del plano: t = veta proyectada
+    const gd = dot(this.grain, n);
+    let t = [this.grain[0] - n[0] * gd, this.grain[1] - n[1] * gd, this.grain[2] - n[2] * gd];
+    if (Math.hypot(...t) < 0.2) { t = cross(n, Math.abs(n[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0]); }
+    const tl = Math.hypot(...t);
+    t = t.map((v) => v / tl);
+    const bt = cross(n, t);
     for (let i = 1; i < pts.length - 1; i++) {
       let [a, b, c] = [pts[0], pts[i], pts[i + 1]];
       const cn = cross(sub(b, a), sub(c, a));
       if (Math.hypot(...cn) < 1e-9) continue;
       if (dot(cn, n) < 0) [b, c] = [c, b];
-      for (const v of [a, b, c]) { L.pos.push(...v); L.nor.push(...n); L.col.push(rgb.r, rgb.g, rgb.b); }
+      for (const v of [a, b, c]) { L.pos.push(...v); L.nor.push(...n); L.col.push(rgb.r, rgb.g, rgb.b); L.uv.push(dot(v, t), dot(v, bt)); }
     }
   }
 
@@ -77,11 +87,11 @@ export class Builder {
   }
 
   geometry() {
-    const g = new BufferGeometry(), pos = [], nor = [], col = [];
+    const g = new BufferGeometry(), pos = [], nor = [], col = [], uv = [];
     let start = 0;
     this.layers.forEach((L, i) => {
       if (!L.pos.length) return;
-      pos.push(...L.pos); nor.push(...L.nor); col.push(...L.col);
+      pos.push(...L.pos); nor.push(...L.nor); col.push(...L.col); uv.push(...L.uv);
       g.addGroup(start, L.pos.length / 3, i);
       start += L.pos.length / 3;
     });
@@ -89,6 +99,7 @@ export class Builder {
     g.setAttribute('position', new Float32BufferAttribute(pos, 3));
     g.setAttribute('normal', new Float32BufferAttribute(nor, 3));
     g.setAttribute('color', new Float32BufferAttribute(col, 3));
+    g.setAttribute('uv', new Float32BufferAttribute(uv, 2));
     g.computeBoundingSphere();
     return g;
   }

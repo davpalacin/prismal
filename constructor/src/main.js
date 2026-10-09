@@ -1,10 +1,15 @@
 import {
   Mesh, MeshBasicMaterial, MeshLambertMaterial, PerspectiveCamera, PointLight, Raycaster, Scene, SphereGeometry,
   Vector2, Vector3, WebGLRenderer, Group, BufferGeometry, Float32BufferAttribute, LineBasicMaterial, LineSegments,
+  Uniform,
 } from 'three';
 import { HALF, MENU, PIECES, STEPS, geometryOf, inBounds, keyOf, place, worldPoint } from './pieces.js';
 import { makeThumbs } from './thumbs.js';
 import { buildWorld } from './world.js';
+import { texturesReady } from './textures.js';
+import { matFor, woodMat } from './materials.js';
+import { KINDS, makeWeather } from './weather.js';
+import { makeAudio } from './audio.js';
 import { makeDog, makeHuman } from './actors.js';
 import * as phys from './physics.js';
 
@@ -14,16 +19,13 @@ const renderer = new WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new Scene();
 const camera = new PerspectiveCamera(60, 1, 0.1, 500);
-const world = buildWorld(scene, phys.addCircle);
+const audio = makeAudio();
+const windU = { uTime: new Uniform(0), uWind: new Uniform(0), uDir: new Uniform(new Vector2(1, 0)) };
+buildWorld(scene, phys.addCircle, windU);
+const weather = makeWeather(scene, windU, audio);
 
-// Materiales compartidos: 0 madera (color por vértice), 1 vidrio, 2 llama.
-const woodMat = new MeshLambertMaterial({ vertexColors: true });
-const glassMat = new MeshLambertMaterial({ color: '#9fd4e8', transparent: true, opacity: 0.35, depthWrite: false });
-const flameMat = new MeshBasicMaterial({ vertexColors: true });
-const mats = [woodMat, glassMat, flameMat];
-const matFor = (g) => (g.groups.length ? mats : woodMat);
 const delMat = new MeshLambertMaterial({ color: '#d9453b' });
-const ghostMat = new MeshBasicMaterial({ color: '#3fc060', transparent: true, opacity: 0.55, depthWrite: false });
+const ghostMat = new MeshBasicMaterial({ color: '#3fc060', transparent: true, opacity: 0.55, depthWrite: false, fog: false });
 
 // Rejilla del suelo: 1 m (clara) y 0,5 m (tenue).
 function mkGrid(step, opacity) {
@@ -82,6 +84,12 @@ function updateCamera() {
 
 const lerpAngle = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
 
+// Viento del clima en el marco local de un actor orientado a `face`.
+function localWind(face) {
+  const c = Math.cos(face), s = Math.sin(face), w = weather.wind;
+  return { x: w.x * c - w.z * s, z: w.x * s + w.z * c, s: w.s };
+}
+
 function step(dt, t) {
   // --- Jugador ---
   const f = [Math.sin(cam.yaw), Math.cos(cam.yaw)], r = [-Math.cos(cam.yaw), Math.sin(cam.yaw)];
@@ -102,7 +110,7 @@ function step(dt, t) {
   human.group.position.set(P.x, P.y, P.z);
   human.group.rotation.y = P.face;
   human.group.visible = !cam.first;
-  human.update(dt, speed, !P.onGround, petT > 0);
+  human.update(dt, speed, !P.onGround, petT > 0, localWind(P.face), t);
 
   // --- Perro: se coloca detrás y a la derecha, sin cruzarse en el camino ---
   const pf = [Math.sin(P.face), Math.cos(P.face)], pr = [-Math.cos(P.face), Math.sin(P.face)];
@@ -129,7 +137,7 @@ function step(dt, t) {
   D.face = lerpAngle(D.face, want, 1 - Math.exp(-10 * dt));
   dog.group.position.set(D.x, D.y, D.z);
   dog.group.rotation.y = D.face;
-  dog.update(dt, dspeed, petT > 0);
+  dog.update(dt, dspeed, petT > 0, localWind(D.face));
   $('hint').style.display = dp < 2.3 && petT <= 0 ? 'block' : 'none';
 
   // --- Luces de antorchas ---
@@ -210,17 +218,21 @@ function refresh() {
   ghost.visible = marker.visible = !!cur;
 }
 
+function removePiece(mesh) {
+  for (const [k, e] of placed) {
+    if (e.mesh !== mesh) continue;
+    placed.delete(k);
+    phys.removeColliders(e);
+    if (e.torch) torches.splice(torches.indexOf(e.torch), 1);
+  }
+  pieces.remove(mesh);
+  if (hovered === mesh) hovered = null;
+  dirty = true;
+}
+
 function act() {
   if (st.mode === 'delete') {
-    if (!hovered) return;
-    for (const [k, e] of placed) {
-      if (e.mesh !== hovered) continue;
-      placed.delete(k);
-      phys.removeColliders(e);
-      if (e.torch) torches.splice(torches.indexOf(e.torch), 1);
-    }
-    pieces.remove(hovered);
-    hovered = null;
+    if (hovered) removePiece(hovered);
   } else {
     if (!cur || !curValid) return;
     const def = PIECES[cur.id], g = geometryOf(cur.id);
@@ -246,7 +258,12 @@ function point(e) {
 }
 // Arrastrar (>5 px) gira la vista; un clic corto coloca / elimina.
 let down = null;
-canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, b: e.button, drag: false }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointerdown', (e) => {
+  audio.init();
+  if (e.button === 1) e.preventDefault();   // evita el autoscroll del clic central
+  down = { x: e.clientX, y: e.clientY, b: e.button, drag: false };
+  canvas.setPointerCapture(e.pointerId);
+});
 canvas.addEventListener('pointermove', (e) => {
   if (down && (down.drag || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5)) {
     if (down.drag) {
@@ -260,27 +277,61 @@ canvas.addEventListener('pointermove', (e) => {
 });
 canvas.addEventListener('pointerup', (e) => {
   if (down && down.b === 0 && !down.drag) { point(e); updateCamera(); refresh(); act(); }
+  else if (down && down.b === 1 && !down.drag) {           // clic central: borra la pieza bajo el puntero
+    point(e);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(pieces.children, false)[0];
+    if (hit) removePiece(hit.object);
+  }
   down = null;
 });
 canvas.addEventListener('pointerleave', () => { if (!down) { havePointer = false; dirty = true; } });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener('auxclick', (e) => e.preventDefault());
 
 // --------------------------------- Menú ------------------------------------
 const $ = (id) => document.getElementById(id);
 const pieceBtns = {};
 const list = $('pieces');
 const ids = MENU.flatMap(([, items]) => items.map((i) => i[0]));
-const thumbs = makeThumbs(ids, geometryOf, matFor);
+const imgs = {};
 for (const [name, items] of MENU) {
   for (const [id, label] of items) {
     const b = document.createElement('button');
     b.title = `${name} ${label}`;
-    b.innerHTML = `<img src="${thumbs[id]}" alt=""><b>${name}</b><small>${label}</small>`;
+    b.innerHTML = `<img alt=""><b>${name}</b><small>${label}</small>`;
+    imgs[id] = b.firstChild;
     b.onclick = () => select(id);
     pieceBtns[id] = b;
     list.append(b);
   }
 }
+// Las miniaturas se generan una vez, cuando las texturas ya están cargadas.
+texturesReady().then(() => {
+  const thumbs = makeThumbs(ids, geometryOf, matFor);
+  for (const id of ids) imgs[id].src = thumbs[id];
+});
+
+const wxBtns = {};
+for (const [id, label] of [['dia', 'Día'], ['noche', 'Noche']]) {
+  const b = document.createElement('button'); b.textContent = label; b.onclick = () => weather.set(id, null); wxBtns[id] = b; $('wx-time').append(b);
+}
+for (const k of Object.keys(KINDS)) {
+  const b = document.createElement('button'); b.textContent = k[0].toUpperCase() + k.slice(1); b.onclick = () => weather.set(null, k); wxBtns[k] = b; $('wx-kind').append(b);
+}
+$('wx-auto').onclick = () => weather.setAuto(!weather.state.auto);
+let muted = false;
+const toggleSound = () => { audio.init(); muted = audio.toggle(); syncWx(); };
+$('wx-snd').onclick = toggleSound;
+function syncWx() {
+  const w = weather.state;
+  for (const id in wxBtns) wxBtns[id].classList.toggle('on', id === w.time || id === w.kind);
+  $('wx-auto').classList.toggle('on', w.auto);
+  $('wx-snd').classList.toggle('on', !muted);
+  $('wx-snd').textContent = muted ? '🔇 Sonido' : '🔊 Sonido';
+}
+weather.onChange = syncWx;
+syncWx();
 
 function syncUI() {
   for (const id in pieceBtns) pieceBtns[id].classList.toggle('on', st.mode === 'build' && id === st.sel);
@@ -329,6 +380,7 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 addEventListener('keydown', (e) => {
+  audio.init();
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   keys[e.code] = true;
   switch (e.code) {
@@ -338,6 +390,7 @@ addEventListener('keydown', (e) => {
     case 'KeyX': case 'Delete': setMode(st.mode === 'delete' ? 'build' : 'delete'); break;
     case 'Escape': setMode('build'); break;
     case 'KeyV': toggleView(); break;
+    case 'KeyM': toggleSound(); break;
     case 'KeyE': pet(); break;
     case 'Equal': case 'NumpadAdd': zoom(0.8); break;
     case 'Minus': case 'NumpadSubtract': zoom(1.25); break;
@@ -364,10 +417,10 @@ function frame(now) {
   last = now;
   step(dt, now / 1000);
   updateCamera();
+  weather.update(dt, now / 1000, camera.position);
   const s = camera.matrixWorld.elements.join();
   if (s !== sig) { sig = s; dirty = true; }
   if (dirty) refresh();
-  world.follow(camera.position);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }

@@ -15,34 +15,43 @@ import { Builder } from './geom.js';
 export const HALF = 25;    // el terreno (50 × 50 m) es [-25, 25] en x y z
 export const MAX_H = 10;   // altura máxima de construcción
 
-const WOOD = ['#8d5d34', '#7d5130', '#966a3f'];
-const DARK = '#563719';
-const SHINGLE = ['#6a4a36', '#7b563e', '#5b3f2e'];
+// Tintes que multiplican la textura de madera / tejas (ambientCG, CC0).
+const WOOD = ['#ffffff', '#d9bf9f', '#ecd5b6'];
+const DARK = '#6b5039';
+const IRON = '#34373c';
+const SHINGLE = ['#a85a3a', '#8f4a2f', '#bd6c42'];
 const STEP = 0.25; // ancho de tabla/tablilla
 
 const floor = (L) => (b) => {
+  b.grain = [0, 0, 1];
   b.box(0, 0, 0, L, 0.07, L, DARK);
   for (let i = 0; i < L / STEP; i++) b.box(i * STEP + 0.006, 0, 0.006, (i + 1) * STEP - 0.006, 0.1, L - 0.006, WOOD[i % 3]);
 };
 
+const nail = (b, x, y, z) => b.box(x - 0.012, y - 0.012, z - 0.006, x + 0.012, y + 0.012, z + 0.006, IRON);
+
 const wall = (W) => (b) => {
+  b.grain = [0, 1, 0];
   b.box(0, 0, -0.03, W, 1, 0.03, DARK);
   for (let i = 0; i < W / STEP; i++) {
     const t = i % 2 ? 0.045 : 0.05;
     b.box(i * STEP + 0.004, 0, -t, (i + 1) * STEP - 0.004, 1, t, WOOD[i % 3]);
   }
+  b.grain = [1, 0, 0];
   b.box(0, 0.14, -0.058, W, 0.26, 0.058, DARK);
   b.box(0, 0.74, -0.058, W, 0.86, 0.058, DARK);
+  for (let i = 0; i < W / STEP; i++) for (const y of [0.2, 0.8]) for (const s of [-1, 1]) nail(b, i * STEP + STEP / 2, y, s * 0.058);
 };
 
-const column = (L) => (b) => b.box(-0.06, 0, -0.06, 0.06, L, 0.06, WOOD[1]);
+const column = (L) => (b) => { b.grain = [0, 1, 0]; b.box(-0.06, 0, -0.06, 0.06, L, 0.06, WOOD[1]); b.box(-0.075, L - 0.04, -0.075, 0.075, L, 0.075, DARK); };
 const beam = (L) => (b) => b.box(0, -0.06, -0.06, L, 0.06, 0.06, WOOD[0]);
 const plankH = (L) => (b) => b.box(0, -0.1, -0.02, L, 0.1, 0.02, WOOD[2]);
-const plankV = (L) => (b) => b.box(-0.1, 0, -0.02, 0.1, L, 0.02, WOOD[2]);
+const plankV = (L) => (b) => { b.grain = [0, 1, 0]; b.box(-0.1, 0, -0.02, 0.1, L, 0.02, WOOD[2]); };
 
 // Refuerzo: varilla de (0,0) a (L,L) en el plano x-y.
 const diag = (L) => (b) => {
   const r = Math.SQRT1_2, len = L * Math.SQRT2;
+  b.grain = [r, r, 0];
   b.obox([0.05 * r, -0.05 * r, -0.04], [r * len, r * len, 0], [-r * 0.1, r * 0.1, 0], [0, 0, 0.08], WOOD[1]);
 };
 
@@ -57,6 +66,7 @@ const roof = (rise, Wd) => (b) => {
   const at = (u, v, z) => [s[0] * u + n[0] * v, s[1] * u + n[1] * v, z];
   b.obox(at(0, -0.085, 0), [s[0] * Ls, s[1] * Ls, 0], [n[0] * 0.05, n[1] * 0.05, 0], [0, 0, Wd], DARK);
   const rows = Math.round(Ls / 0.22), cols = Math.round(Wd / STEP), du = Ls / rows;
+  b.layer = 3;
   for (let i = 0; i < rows; i++) {
     for (let j = 0; j < cols; j++) {
       b.obox(at(i * du, -0.045 + (i % 2) * 0.012, j * STEP + 0.006),
@@ -64,12 +74,14 @@ const roof = (rise, Wd) => (b) => {
         SHINGLE[(i + 2 * j) % 3]);
     }
   }
+  b.layer = 0;
 };
 
 
 // Pared con el borde superior cortado en diagonal (pendiente k = tan del tejado):
 // altura 1 m en x=0 y 1+k·x en el resto; coincide con la línea del tejado.
 const gable = (k, W) => (b) => {
+  b.grain = [0, 1, 0];
   const H = (x) => 1 + k * x - 0.04;
   const poly = (x0, x1, t) => [[x0, 0, t], [x1, 0, t], [x1, H(x1), t], [x0, H(x0), t]];
   b.prism(poly(0, W, 0.03), [0, 0, 1], 0.06, DARK);
@@ -77,7 +89,9 @@ const gable = (k, W) => (b) => {
     const t = i % 2 ? 0.045 : 0.05;
     b.prism(poly(i * STEP + 0.004, (i + 1) * STEP - 0.004, t), [0, 0, 1], 2 * t, WOOD[i % 3]);
   }
+  b.grain = [1, 0, 0];
   b.box(0, 0.14, -0.058, W, 0.26, 0.058, DARK);
+  for (let i = 0; i < W / STEP; i++) for (const s of [-1, 1]) nail(b, i * STEP + STEP / 2, 0.2, s * 0.058);
 };
 
 // Esquinas de tejado de 1 × 1 m con los aleros en x=0 y z=0 (misma pendiente y
@@ -91,6 +105,7 @@ const cornerRoof = (r, outer) => (b) => {
     ? [[[0, sh, 0], [0, sh, 1], [1, r + sh, 1]], [[0, sh, 0], [1, sh, 0], [1, r + sh, 1]]]
     : [[[0, sh, 0], [1, r + sh, 0], [1, r + sh, 1]], [[0, sh, 0], [0, r + sh, 1], [1, r + sh, 1]]];
   tri.forEach((t) => b.prism(t, UP, 0.04, DARK));
+  b.layer = 3;
   for (let i = 0; i < N; i++) {
     const a = i / N + g, c = (i + 1) / N - g;
     const rows = outer
@@ -98,11 +113,13 @@ const cornerRoof = (r, outer) => (b) => {
       : [[[a, h(a), 0], [a, h(a), a], [c, h(c), c], [c, h(c), 0]], [[0, h(a), a], [a, h(a), a], [c, h(c), c], [0, h(c), c]]];
     rows.forEach((p, j) => b.prism(p, UP, 0.05, SHINGLE[(i + j) % 3]));
   }
+  b.layer = 0;
   if (outer) b.obox([0.028, 0, -0.028], [1, r, 1], [-0.057, 0, 0.057], [0, 0.045, 0], DARK);
 };
 
 // Puerta 1 × 2 m: marco con la hoja entreabierta.
 const door = (b) => {
+  b.grain = [0, 1, 0];
   b.box(0, 0, -0.07, 0.08, 2, 0.07, WOOD[1]);
   b.box(0.92, 0, -0.07, 1, 2, 0.07, WOOD[1]);
   b.box(0, 1.85, -0.07, 1, 2, 0.07, WOOD[0]);
@@ -112,7 +129,8 @@ const door = (b) => {
     const u0 = (i * w) / 3 + 0.004, u1 = ((i + 1) * w) / 3 - 0.004;
     b.obox(at(u0, 0, 0), [d[0] * (u1 - u0), 0, d[2] * (u1 - u0)], [0, 1.84, 0], [n[0] * 0.05, 0, n[2] * 0.05], WOOD[(i + 1) % 3]);
   }
-  for (const y of [0.3, 1.4]) b.obox(at(0, y, 0.05), [d[0] * w, 0, d[2] * w], [0, 0.1, 0], [n[0] * 0.02, 0, n[2] * 0.02], DARK);
+  for (const y of [0.3, 1.4]) b.obox(at(0, y, 0.05), [d[0] * w, 0, d[2] * w], [0, 0.1, 0], [n[0] * 0.02, 0, n[2] * 0.02], IRON);
+  b.obox(at(w - 0.1, 0.95, 0.05), [0.05 * d[0], 0, 0.05 * d[2]], [0, 0.05, 0], [n[0] * 0.04, 0, n[2] * 0.04], IRON);   // aldaba
 };
 
 // Pared de vidrio de 0,5 × 1 m con marco de madera.
@@ -128,8 +146,10 @@ const glass = (b) => {
 
 // Antorcha: palo con la cabeza de trapo y una llama (capa 2, sin sombreado).
 const torch = (b) => {
+  b.grain = [0, 1, 0];
   b.box(-0.025, 0, -0.025, 0.025, 0.55, 0.025, WOOD[1]);
   b.box(-0.05, 0.5, -0.05, 0.05, 0.62, 0.05, DARK);
+  b.box(-0.055, 0.46, -0.055, 0.055, 0.49, 0.055, IRON);
   b.layer = 2;
   const pyr = (h, w, c) => b.pyramid([[-w, 0.62, -w], [w, 0.62, -w], [w, 0.62, w], [-w, 0.62, w]], [0, 0.62 + h, 0], c);
   pyr(0.27, 0.07, '#ff7a1a');
