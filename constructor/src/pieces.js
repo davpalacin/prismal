@@ -12,8 +12,8 @@ import { Builder } from './geom.js';
 //    0,5 m: la longitud nominal es 1 o 0,5 y las alturas de tejado también.
 // ---------------------------------------------------------------------------
 
-export const HALF = 2.5;   // el terreno es [-2.5, 2.5] en x y z
-export const MAX_H = 4;    // altura máxima de construcción
+export const HALF = 25;    // el terreno (50 × 50 m) es [-25, 25] en x y z
+export const MAX_H = 10;   // altura máxima de construcción
 
 const WOOD = ['#8d5d34', '#7d5130', '#966a3f'];
 const DARK = '#563719';
@@ -69,9 +69,23 @@ const roof = (rise, Wd) => (b) => {
 export const PIECES = {};
 const corners = ([x, y, z]) => [0, x].flatMap((a) => [0, y].flatMap((c) => [0, z].map((d) => [a, c, d])));
 
-function add(id, label, size, build, keys = corners(size)) {
-  PIECES[id] = { id, label, size, build, keys };
+// Puntos de anclaje: todos los puntos de la rejilla de 0,5 m dentro de la
+// caja nominal de la pieza (esquinas, bordes, caras), ordenados de abajo arriba.
+function grid(size) {
+  const ax = (n) => { const r = []; for (let v = 0; v <= n + 1e-9; v += 0.5) r.push(v); return r; };
+  const pts = [];
+  for (const y of ax(size[1])) for (const x of ax(size[0])) for (const z of ax(size[2])) pts.push([x, y, z]);
+  return pts;
 }
+
+function add(id, label, size, build, keys = corners(size), anchors = grid(size)) {
+  PIECES[id] = { id, label, size, build, keys, anchors };
+}
+// Tejado: los cuatro bordes paralelos al ancho (alero, cumbrera y sus bases).
+const roofAnchors = (rise, W) => [[0, 0], [RUN, 0], [0, rise], [RUN, rise]]
+  .flatMap(([x, y]) => grid([0, 0, W]).map(([, , z]) => [x, y, z]));
+// Diagonal: las cuatro esquinas del módulo y el centro del refuerzo.
+const diagAnchors = (L) => [[0, 0, 0], [L, 0, 0], [0, L, 0], [L, L, 0], [L / 2, L / 2, 0]];
 
 // Filas del menú: [nombre, [[id, etiqueta, size, build, keys?], ...]]
 const rise26 = 0.5, rise45 = 1;
@@ -89,7 +103,9 @@ export const MENU = [
   ['Tejado 45°', [['r45a', '1 m', [RUN, rise45, 1], roof(rise45, 1), [[0, 0, 0], [0, 0, 1], [RUN, rise45, 0], [RUN, rise45, 1]]],
                   ['r45b', '0,5 m', [RUN, rise45, 0.5], roof(rise45, 0.5), [[0, 0, 0], [0, 0, 0.5], [RUN, rise45, 0], [RUN, rise45, 0.5]]]]],
 ];
-for (const [, items] of MENU) for (const [id, label, size, build, keys] of items) add(id, label, size, build, keys);
+for (const [name, items] of MENU) for (const [id, label, size, build, keys] of items) add(id, name + ' ' + label, size, build, keys);
+for (const L of [1, 0.5]) PIECES[L === 1 ? 'dg1' : 'dg05'].anchors = diagAnchors(L);
+for (const [id, rise, W] of [['r26a', rise26, 1], ['r26b', rise26, 0.5], ['r45a', rise45, 1], ['r45b', rise45, 0.5]]) PIECES[id].anchors = roofAnchors(rise, W);
 
 const geoms = {};
 export function geometryOf(id) {
@@ -98,31 +114,26 @@ export function geometryOf(id) {
 }
 
 // ------------------------------ Colocación ---------------------------------
-const C = [1, 0, -1, 0], S = [0, 1, 0, -1];
-// Giro de k·90° alrededor de Y (igual que Object3D.rotation.y).
-export const rotXZ = (x, z, k) => [x * C[k] + z * S[k], -x * S[k] + z * C[k]];
+export const STEPS = 8;    // giros posibles: 8 × 45°
+// Giro de k·45° alrededor de Y (igual que Object3D.rotation.y).
+export const rotXZ = (x, z, k) => {
+  const a = k * Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
+  return [x * c + z * s, -x * s + z * c];
+};
 
-// Ajusta la pieza a la cuadrícula `s` de modo que su huella quede centrada en
-// (cx, cz) y su esquina mínima caiga en un vértice; el giro es sobre su centro.
-export function place(p, rot, cx, cz, y, s) {
-  const [lx, , lz] = p.size;
-  const a = rotXZ(0, 0, rot), c = rotXZ(lx, lz, rot);
-  const mx = Math.min(a[0], c[0]), mz = Math.min(a[1], c[1]);
-  const fx = Math.abs(c[0] - a[0]), fz = Math.abs(c[1] - a[1]);
-  const snap = (v) => Math.round(v / s) * s;
-  return {
-    id: p.id, rot, y,
-    x: snap(cx + HALF - fx / 2) - mx - HALF,
-    z: snap(cz + HALF - fz / 2) - mz - HALF,
-  };
+// Coloca la pieza de modo que su anclaje `ai` coincida con el punto `t`.
+export function place(p, rot, ai, t) {
+  const a = p.anchors[ai], [rx, rz] = rotXZ(a[0], a[2], rot);
+  return { id: p.id, rot, x: t[0] - rx, y: t[1] - a[1], z: t[2] - rz };
 }
 
-const world = (pl, [x, y, z]) => {
+export const worldPoint = (pl, [x, y, z]) => {
   const [rx, rz] = rotXZ(x, z, pl.rot);
   return [pl.x + rx, pl.y + y, pl.z + rz];
 };
+const world = worldPoint;
 
-// Válida si cabe en el terreno 5×5 y bajo la altura máxima.
+// Válida si cabe en el terreno y bajo la altura máxima.
 export function inBounds(pl) {
   const p = PIECES[pl.id], e = 1e-6;
   return p.keys.concat(corners(p.size)).every((k) => {

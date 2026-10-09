@@ -8,7 +8,7 @@
   :root { --panel: rgba(44, 30, 18, .88); --line: #6e4d2c; --txt: #f1e4cc; --on: #c9923f; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #9fb7c4; font: 12px/1.3 system-ui, sans-serif; }
   #c { display: block; width: 100%; height: 100%; touch-action: none; }
-  #ui { position: fixed; left: 8px; top: 8px; width: 214px; max-height: calc(100% - 40px); overflow: auto;
+  #ui { position: fixed; left: 8px; top: 8px; width: 236px; max-height: calc(100% - 40px); overflow: auto;
         padding: 6px; background: var(--panel); color: var(--txt); border: 1px solid var(--line); border-radius: 6px; }
   .row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
   .row > span { flex: 1 1 auto; min-width: 0; }
@@ -18,11 +18,16 @@
            padding: 4px 6px; min-height: 26px; cursor: pointer; }
   button:hover { background: #5d412a; }
   button.on { background: var(--on); color: #2a1b0d; border-color: #e6b765; }
-  .row button { flex: 0 0 auto; min-width: 54px; }
+  #ui { display: flex; flex-direction: column; overflow: hidden; }
+  #pieces { flex: 1 1 auto; min-height: 90px; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 4px; align-content: start; grid-auto-rows: max-content; }
+  #pieces button { display: flex; flex-direction: column; align-items: center; padding: 2px; min-height: 0; line-height: 1.15; background: #4a3321; }
+  #pieces img { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #b7c9d1; }
+  #pieces b { font-size: 10px; font-weight: 600; }
+  #pieces small { font-size: 10px; opacity: .8; }
+  #ang, #anc { flex: 1; text-align: center; }
   .row.bar button { flex: 1; min-width: 0; }
-  #lvl { flex: 1; text-align: center; }
   #help { position: fixed; left: 8px; bottom: 8px; right: 8px; color: #2b2116; text-shadow: 0 0 3px #fff8; pointer-events: none; }
-  @media (max-width: 520px) { #ui { width: 180px; font-size: 11px; } .row button { min-width: 46px; } }
+  @media (max-width: 520px) { #ui { width: 190px; font-size: 11px; } }
 </style>
 </head>
 <body>
@@ -31,10 +36,11 @@
   <div id="pieces"></div>
   <div class="row bar"><button id="m-build" class="on">Colocar</button><button id="m-del">Eliminar (X)</button></div>
   <div class="row bar"><span>Ajuste (G)</span><button id="s1" class="on">1 m</button><button id="s05">0,5 m</button></div>
-  <div class="row bar"><button id="rot">Girar 90° (R)</button></div>
-  <div class="row bar"><span>Altura</span><button id="down" title="Q">▼</button><span id="lvl">0 m</span><button id="up" title="E">▲</button></div>
+  <div class="row bar"><span>Anclaje (Q)</span><button id="ancp">◀</button><span id="anc">1</span><button id="ancn">▶</button></div>
+  <div class="row bar"><span>Giro (rueda/R)</span><button id="rot">⟳</button><span id="ang">0°</span></div>
+  <div class="row bar"><span>Zoom</span><button id="zout">−</button><button id="zin">+</button></div>
 </div>
-<div id="help">Clic: colocar · Arrastrar: orbitar · Clic der./Mayús+arrastrar: desplazar · Rueda: zoom · R girar · G ajuste · Q/E altura · X eliminar</div>
+<div id="help">Clic: colocar · Rueda: girar 45° · Q: cambiar anclaje · Arrastrar: orbitar · Clic der./Mayús+arrastrar: desplazar · Ctrl+rueda o +/−: zoom · G ajuste · X eliminar</div>
 <script src="dist/app.js"></script>
 </body>
 </html>

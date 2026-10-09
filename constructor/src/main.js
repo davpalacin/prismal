@@ -1,10 +1,11 @@
 import {
   BoxGeometry, BufferGeometry, Color, DirectionalLight, DoubleSide, Float32BufferAttribute,
   HemisphereLight, InstancedMesh, LineBasicMaterial, LineSegments, Matrix4, Mesh, MeshBasicMaterial,
-  MeshLambertMaterial, PerspectiveCamera, Quaternion, Raycaster, Scene, Vector2, Vector3, WebGLRenderer, Group,
+  MeshLambertMaterial, PerspectiveCamera, Quaternion, Raycaster, Scene, SphereGeometry, Vector2, Vector3, WebGLRenderer, Group,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { HALF, MAX_H, MENU, PIECES, geometryOf, inBounds, keyOf, place } from './pieces.js';
+import { HALF, MAX_H, MENU, PIECES, STEPS, geometryOf, inBounds, keyOf, place, worldPoint } from './pieces.js';
+import { makeThumbs } from './thumbs.js';
 
 // ------------------------------- Escena ------------------------------------
 const canvas = document.getElementById('c');
@@ -12,8 +13,8 @@ const renderer = new WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new Scene();
 scene.background = new Color('#9fb7c4');
-const camera = new PerspectiveCamera(45, 1, 0.1, 100);
-camera.position.set(4.2, 3.6, 5);
+const camera = new PerspectiveCamera(45, 1, 0.1, 400);
+camera.position.set(7, 6, 9);
 
 scene.add(new HemisphereLight('#ffffff', '#8a7a5a', 1.6));
 const sun = new DirectionalLight('#fff0d4', 1.9);
@@ -28,7 +29,7 @@ const ghostMat = new MeshBasicMaterial({ color: '#3fc060', transparent: true, op
 // Terreno: bloque de 5×5 con la cara superior verde y los lados de tierra.
 const soil = new MeshLambertMaterial({ color: '#6b4f3a' });
 const grass = new MeshLambertMaterial({ color: '#5f9b4a' });
-const ground = new Mesh(new BoxGeometry(5, 0.3, 5), [soil, soil, grass, soil, soil, soil]);
+const ground = new Mesh(new BoxGeometry(2 * HALF, 0.3, 2 * HALF), [soil, soil, grass, soil, soil, soil]);
 ground.position.y = -0.15;
 scene.add(ground);
 
@@ -48,11 +49,11 @@ scene.add(ground);
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const tufts = [];
-  for (let c = 0; c < 16; c++) {
-    const cx = (rnd() - 0.5) * 4.6, cz = (rnd() - 0.5) * 4.6;
+  for (let c = 0; c < 400; c++) {
+    const cx = (rnd() - 0.5) * (2 * HALF - 0.4), cz = (rnd() - 0.5) * (2 * HALF - 0.4);
     for (let k = 0, n = 4 + Math.floor(rnd() * 4); k < n; k++) {
-      tufts.push([Math.max(-2.45, Math.min(2.45, cx + (rnd() - 0.5) * 0.45)),
-        Math.max(-2.45, Math.min(2.45, cz + (rnd() - 0.5) * 0.45)), rnd()]);
+      tufts.push([Math.max(-HALF + 0.05, Math.min(HALF - 0.05, cx + (rnd() - 0.5) * 0.45)),
+        Math.max(-HALF + 0.05, Math.min(HALF - 0.05, cz + (rnd() - 0.5) * 0.45)), rnd()]);
     }
   }
   const mesh = new InstancedMesh(g, new MeshLambertMaterial({ side: DoubleSide }), tufts.length);
@@ -69,7 +70,7 @@ scene.add(ground);
 // Rejilla del plano de trabajo: 1 m (clara) y 0,5 m (tenue).
 function gridLines(step) {
   const v = [];
-  for (let u = 0; u <= 5 + 1e-6; u += step) {
+  for (let u = 0; u <= 2 * HALF + 1e-6; u += step) {
     v.push(u - HALF, 0, -HALF, u - HALF, 0, HALF, -HALF, 0, u - HALF, HALF, 0, u - HALF);
   }
   return v;
@@ -82,16 +83,21 @@ const mkGrid = (step, opacity) => {
   return l;
 };
 const gridMain = mkGrid(1, 0.55), gridHalf = mkGrid(0.5, 0.22);
+gridMain.position.y = gridHalf.position.y = 0.004;
 
 // ------------------------------ Estado -------------------------------------
-const st = { sel: 'floor1', rot: 0, snap: 1, lift: 0, mode: 'build' };
-const placed = new Map();      // clave geométrica -> Mesh
+const st = { sel: 'floor1', rot: 0, anchor: 0, snap: 1, mode: 'build' };
+const placed = new Map();      // clave geométrica -> { mesh, pts } (pts: anclajes en el mundo)
 const pieces = new Group();
 scene.add(pieces);
 const ghost = new Mesh(geometryOf(st.sel), ghostMat);
 ghost.visible = false;
 scene.add(ghost);
-let cur = null, curValid = false, hovered = null, havePointer = false;
+const marker = new Mesh(new SphereGeometry(0.08, 10, 8), new MeshBasicMaterial({ color: '#ffd23f', depthTest: false }));
+marker.renderOrder = 10;
+marker.visible = false;
+scene.add(marker);
+let cur = null, curValid = false, hovered = null, havePointer = false, px = 0, py = 0;
 
 let queued = false;
 function invalidate() {
@@ -106,12 +112,12 @@ controls.target.set(0, 0.5, 0);
 controls.enableDamping = false;
 controls.screenSpacePanning = false;
 controls.minDistance = 2;
-controls.maxDistance = 16;
+controls.maxDistance = 90;
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.update();
 controls.addEventListener('change', () => {
   const t = controls.target, d = new Vector3(
-    Math.max(-3, Math.min(3, t.x)) - t.x, Math.max(0, Math.min(MAX_H, t.y)) - t.y, Math.max(-3, Math.min(3, t.z)) - t.z);
+    Math.max(-HALF - 1, Math.min(HALF + 1, t.x)) - t.x, Math.max(0, Math.min(MAX_H, t.y)) - t.y, Math.max(-HALF - 1, Math.min(HALF + 1, t.z)) - t.z);
   if (d.lengthSq()) { t.add(d); camera.position.add(d); }
   refresh();
 });
@@ -133,25 +139,49 @@ function setHover(mesh) {
   if (mesh) mesh.material = delMat;
 }
 
+// Punto de anclaje objetivo: el anclaje de una pieza colocada más cercano al
+// puntero en pantalla (radio 26 px) o, si no hay ninguno, el vértice de la
+// rejilla del suelo bajo el puntero.
+const tmp = new Vector3();
+function target() {
+  let best = null, bd = 26 * 26;
+  const w = innerWidth / 2, h = innerHeight / 2;
+  for (const { pts } of placed.values()) {
+    for (let i = 0; i < pts.length; i += 3) {
+      tmp.set(pts[i], pts[i + 1], pts[i + 2]).project(camera);
+      if (tmp.z > 1) continue;
+      const d = (tmp.x * w + w - px) ** 2 + (-tmp.y * h + h - py) ** 2;
+      if (d < bd) { bd = d; best = [pts[i], pts[i + 1], pts[i + 2]]; }
+    }
+  }
+  if (best) return best;
+  const o = ray.ray.origin, d = ray.ray.direction, t = -o.y / d.y;
+  if (!(t > 0)) return null;
+  const sn = (v) => Math.round(v / st.snap) * st.snap;
+  return [sn(o.x + d.x * t) + 0, 0, sn(o.z + d.z * t) + 0];
+}
+
 // Recalcula la vista previa (o el resaltado en modo eliminar).
 function refresh() {
-  if (!havePointer) { ghost.visible = false; setHover(null); invalidate(); return; }
+  if (!havePointer) { ghost.visible = marker.visible = false; setHover(null); invalidate(); return; }
   ray.setFromCamera(ndc, camera);
   if (st.mode === 'delete') {
-    ghost.visible = false;
+    ghost.visible = marker.visible = false;
     setHover(ray.intersectObjects(pieces.children, false)[0]?.object ?? null);
   } else {
     setHover(null);
-    const o = ray.ray.origin, d = ray.ray.direction, t = (st.lift - o.y) / d.y;   // plano de trabajo y = lift
+    const t = target();
     cur = null;
-    if (t > 0) {
-      cur = place(PIECES[st.sel], st.rot, o.x + d.x * t, o.z + d.z * t, st.lift, st.snap);
+    if (t) {
+      cur = place(PIECES[st.sel], st.rot, st.anchor, t);
       curValid = inBounds(cur) && !placed.has(keyOf(cur));
       ghost.position.set(cur.x, cur.y, cur.z);
-      ghost.rotation.y = cur.rot * Math.PI / 2;
+      ghost.rotation.y = cur.rot * Math.PI / 4;
       ghostMat.color.set(curValid ? '#3fc060' : '#e04848');
+      marker.position.set(...t);
+      marker.scale.setScalar(Math.max(0.5, camera.position.distanceTo(marker.position) * 0.02));
     }
-    ghost.visible = !!cur;
+    ghost.visible = marker.visible = !!cur;
   }
   invalidate();
 }
@@ -159,33 +189,36 @@ function refresh() {
 function act() {
   if (st.mode === 'delete') {
     if (!hovered) return;
-    for (const [k, m] of placed) if (m === hovered) placed.delete(k);
+    for (const [k, e] of placed) if (e.mesh === hovered) placed.delete(k);
     pieces.remove(hovered);
     hovered = null;
   } else {
     if (!cur || !curValid) return;
     const m = new Mesh(geometryOf(cur.id), woodMat);
     m.position.set(cur.x, cur.y, cur.z);
-    m.rotation.y = cur.rot * Math.PI / 2;
+    m.rotation.y = cur.rot * Math.PI / 4;
     m.matrixAutoUpdate = false;
     m.updateMatrix();
     pieces.add(m);
-    placed.set(keyOf(cur), m);
+    placed.set(keyOf(cur), { mesh: m, pts: PIECES[cur.id].anchors.flatMap((a) => worldPoint(cur, a)) });
   }
   refresh();
 }
 
+function point(e) {
+  px = e.clientX; py = e.clientY;
+  ndc.set((px / innerWidth) * 2 - 1, -(py / innerHeight) * 2 + 1);
+  havePointer = true;
+}
 let down = null;
 canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, b: e.button }; });
 canvas.addEventListener('pointermove', (e) => {
-  ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-  havePointer = true;
+  point(e);
   refresh();
 });
 canvas.addEventListener('pointerup', (e) => {
   if (down && down.b === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6) {
-    ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-    havePointer = true;
+    point(e);
     refresh();
     act();
   }
@@ -197,18 +230,17 @@ canvas.addEventListener('pointerleave', () => { havePointer = false; refresh(); 
 const $ = (id) => document.getElementById(id);
 const pieceBtns = {};
 const list = $('pieces');
+const ids = MENU.flatMap(([, items]) => items.map((i) => i[0]));
+const thumbs = makeThumbs(ids, geometryOf, woodMat);
 for (const [name, items] of MENU) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = `<span>${name}</span>`;
   for (const [id, label] of items) {
     const b = document.createElement('button');
-    b.textContent = label;
+    b.title = `${name} ${label}`;
+    b.innerHTML = `<img src="${thumbs[id]}" alt=""><b>${name}</b><small>${label}</small>`;
     b.onclick = () => select(id);
     pieceBtns[id] = b;
-    row.append(b);
+    list.append(b);
   }
-  list.append(row);
 }
 
 function syncUI() {
@@ -217,18 +249,23 @@ function syncUI() {
   $('m-del').classList.toggle('on', st.mode === 'delete');
   $('s1').classList.toggle('on', st.snap === 1);
   $('s05').classList.toggle('on', st.snap === 0.5);
-  $('lvl').textContent = st.lift.toString().replace('.', ',') + ' m';
+  $('anc').textContent = `${st.anchor + 1} / ${PIECES[st.sel].anchors.length}`;
+  $('ang').textContent = `${st.rot * 45}°`;
   gridHalf.visible = st.snap === 0.5;
-  gridMain.position.y = gridHalf.position.y = st.lift + 0.004;
 }
 
-function select(id) { st.sel = id; st.mode = 'build'; ghost.geometry = geometryOf(id); syncUI(); refresh(); }
+function select(id) { st.sel = id; st.anchor = 0; st.mode = 'build'; ghost.geometry = geometryOf(id); syncUI(); refresh(); }
 function setMode(m) { st.mode = m; syncUI(); refresh(); }
-function setSnap(s) { st.snap = s; st.lift = Math.round(st.lift / s) * s; syncUI(); refresh(); }
-function rotate(d) { st.rot = (st.rot + d + 4) % 4; refresh(); }
-function level(d) {
-  st.lift = Math.max(0, Math.min(MAX_H - PIECES[st.sel].size[1], st.lift + d * st.snap));
+function setSnap(s) { st.snap = s; syncUI(); refresh(); }
+function rotate(d) { st.rot = (st.rot + d + STEPS) % STEPS; syncUI(); refresh(); }
+function anchor(d) {
+  const n = PIECES[st.sel].anchors.length;
+  st.anchor = (st.anchor + d + n) % n;
   syncUI(); refresh();
+}
+function zoom(f) {
+  camera.position.sub(controls.target).multiplyScalar(f).add(controls.target);
+  controls.update();
 }
 
 $('m-build').onclick = () => setMode('build');
@@ -236,18 +273,31 @@ $('m-del').onclick = () => setMode('delete');
 $('s1').onclick = () => setSnap(1);
 $('s05').onclick = () => setSnap(0.5);
 $('rot').onclick = () => rotate(1);
-$('up').onclick = () => level(1);
-$('down').onclick = () => level(-1);
+$('ancp').onclick = () => anchor(-1);
+$('ancn').onclick = () => anchor(1);
+$('zin').onclick = () => zoom(0.8);
+$('zout').onclick = () => zoom(1.25);
+
+// Rueda: gira la pieza en 8 pasos de 45° (con Ctrl, o en modo eliminar, hace zoom).
+let wheelAcc = 0;
+addEventListener('wheel', (e) => {
+  if (e.target !== canvas || st.mode !== 'build' || e.ctrlKey) return;
+  e.preventDefault();
+  e.stopPropagation();
+  wheelAcc += e.deltaY * (e.deltaMode === 1 ? 33 : 1);
+  if (Math.abs(wheelAcc) >= 50) { rotate(wheelAcc > 0 ? 1 : -1); wheelAcc = 0; }
+}, { capture: true, passive: false });
 
 addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   switch (e.code) {
     case 'KeyR': rotate(e.shiftKey ? -1 : 1); break;
+    case 'KeyQ': anchor(e.shiftKey ? -1 : 1); break;
     case 'KeyG': setSnap(st.snap === 1 ? 0.5 : 1); break;
-    case 'KeyQ': case 'PageDown': level(-1); break;
-    case 'KeyE': case 'PageUp': level(1); break;
     case 'KeyX': case 'Delete': setMode(st.mode === 'delete' ? 'build' : 'delete'); break;
     case 'Escape': setMode('build'); break;
+    case 'Equal': case 'NumpadAdd': zoom(0.8); break;
+    case 'Minus': case 'NumpadSubtract': zoom(1.25); break;
     default: return;
   }
   e.preventDefault();
