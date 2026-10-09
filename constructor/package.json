@@ -3,7 +3,7 @@
   "private": true,
   "description": "Prototipo 3D de construcción modular (Three.js)",
   "scripts": {
-    "build": "esbuild src/main.js --bundle --minify --format=iife --loader:.jpg=dataurl --outfile=dist/app.js"
+    "build": "esbuild src/main.js --bundle --minify --format=iife --loader:.jpg=dataurl --loader:.glb=dataurl --outfile=dist/app.js"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

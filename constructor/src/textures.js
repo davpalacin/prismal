@@ -5,6 +5,8 @@ import tilesUrl from './tex/tiles.jpg';
 import tilesNUrl from './tex/tilesN.jpg';
 import grassUrl from './tex/grass.jpg';
 import rockUrl from './tex/rock.jpg';
+import grassNUrl from './tex/grassN.jpg';
+import rockNUrl from './tex/rockN.jpg';
 
 // Texturas CC0 de ambientCG (WoodFloor043, Tiles036, Grass001, Rock020),
 // tomadas de la biblioteca pmndrs/market-assets y reducidas a ≤1024 px.
@@ -29,8 +31,11 @@ export const T = {
   woodN: tex(woodNUrl, [0.5, 1], false),
   tiles: tex(tilesUrl, [1.5, 1.5]),
   tilesN: tex(tilesNUrl, [1.5, 1.5], false),
-  grass: tex(grassUrl, [25, 25]),
+  grass: tex(grassUrl, [22, 22]),
+  grassN: tex(grassNUrl, [22, 22], false),
   rock: tex(rockUrl, [12, 1]),
+  rockMap: tex(rockUrl, [1, 1]),
+  rockN: tex(rockNUrl, [1, 1], false),
   bark: tex(rockUrl, [1, 1]),
   leaf: tex(grassUrl, [1, 1]),
 };

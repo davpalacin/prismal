@@ -1,4 +1,5 @@
 import { HALF, rampHeight, worldPoint } from './pieces.js';
+import { heightAt } from './terrain.js';
 
 // Colisión mínima para caminar: cilindros contra cajas orientadas (OBB) y
 // árboles circulares, más rampas (tejados y esquinas) como suelo caminable.
@@ -50,7 +51,7 @@ function push(a, s, r) {
 }
 
 function groundAt(x, z, y, step) {
-  let best = 0;
+  let best = heightAt(x, z);
   for (const s of solids) {
     if (s.r !== undefined || s.y1 > y + step + 1e-6 || s.y1 <= best) continue;
     const dx = x - s.cx, dz = z - s.cz;

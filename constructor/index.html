@@ -31,7 +31,14 @@
   #wx .cap { font-size: 10px; opacity: .7; margin: 2px 0; text-transform: uppercase; letter-spacing: .06em; }
   #wx .grp { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
   #wx button { flex: 1 1 auto; padding: 3px 6px; min-height: 24px; }
-  #hint { display: none; position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); padding: 4px 10px; border-radius: 12px; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; pointer-events: none; }
+  #hotbar { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px;
+            background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  .slot { position: relative; width: 62px; height: 62px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .slot i { position: absolute; left: 5px; top: 2px; font-style: normal; font-size: 11px; opacity: .8; }
+  .slot .ic { font-size: 26px; line-height: 30px; height: 30px; }
+  .slot small { font-size: 10px; opacity: .85; }
+  .slot.on { outline: 2px solid #ffd27a; }
+  #hint { display: none; position: fixed; left: 50%; bottom: 118px; transform: translateX(-50%); padding: 4px 10px; border-radius: 12px; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; pointer-events: none; }
   .heart { position: fixed; color: #ff5a7a; font-size: 22px; pointer-events: none; animation: up 1.3s ease-out forwards; text-shadow: 0 0 4px #000a; }
   @keyframes up { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-60px); } }
   #help { position: fixed; left: 8px; bottom: 8px; right: 8px; color: #e6dcc6; text-shadow: 0 0 3px #000; pointer-events: none; }
@@ -43,7 +50,7 @@
 <div id="ui">
   <div id="pieces"></div>
   <div class="row bar"><button id="m-build" class="on">Colocar</button><button id="m-del">Eliminar (X)</button></div>
-  <div class="row bar"><span>Ajuste (G)</span><button id="s1" class="on">1 m</button><button id="s05">0,5 m</button></div>
+  <div class="row bar"><span>Ajuste (G)</span><button id="s0" class="on">Libre</button><button id="s05">0,5 m</button><button id="s1">1 m</button></div>
   <div class="row bar"><span>Anclaje (Q)</span><button id="ancp">◀</button><span id="anc">1</span><button id="ancn">▶</button></div>
   <div class="row bar"><span>Giro (rueda/R)</span><button id="rot">⟳</button><span id="ang">0°</span></div>
   <div class="row bar"><button id="view">3ª persona</button><button id="zout">−</button><button id="zin">+</button></div>
@@ -53,8 +60,14 @@
   <div class="cap">Clima</div><div class="grp" id="wx-kind"></div>
   <div class="grp"><button id="wx-auto" class="on">Auto</button><button id="wx-snd" class="on">🔊 Sonido</button></div>
 </div>
+<div id="hotbar">
+  <button class="slot on" data-slot="1" title="Martillo (1)"><i>1</i><span class="ic">🔨</span><small>Martillo</small></button>
+  <button class="slot" data-slot="2" title="Mano (2)"><i>2</i><span class="ic">✋</span><small>Mano</small></button>
+  <button class="slot" data-slot="3" title="Vacío (3)"><i>3</i><span class="ic"></span><small>Vacío</small></button>
+  <button class="slot" data-slot="4" title="Vacío (4)"><i>4</i><span class="ic"></span><small>Vacío</small></button>
+</div>
 <div id="hint">E · acariciar al perrito</div>
-<div id="help">WASD mover · Shift correr · Espacio saltar · V vista · E acariciar · Clic: colocar · Clic central: borrar · Rueda: girar pieza · Q: anclaje · Arrastrar: mirar · Ctrl+rueda o +/−: zoom · G ajuste · X eliminar · M sonido · Texturas CC0 de ambientCG</div>
+<div id="help">WASD mover · Shift correr · Espacio saltar · V vista · 1–4 inventario (1 martillo, 2 mano) · Martillo: clic colocar, clic central borrar, rueda gira pieza, Q anclaje, G ajuste, X eliminar · Mano: E acariciar, rueda zoom · M sonido · Texturas CC0 ambientCG · Personaje: Mixamo (Xbot) vía three.js</div>
 <script src="dist/app.js"></script>
 </body>
 </html>

@@ -10,7 +10,9 @@ import { texturesReady } from './textures.js';
 import { matFor, woodMat } from './materials.js';
 import { KINDS, makeWeather } from './weather.js';
 import { makeAudio } from './audio.js';
-import { makeDog, makeHuman } from './actors.js';
+import { makeDog } from './actors.js';
+import { makeHuman } from './human.js';
+import { heightAt, raycastTerrain } from './terrain.js';
 import * as phys from './physics.js';
 
 // ------------------------------- Escena ------------------------------------
@@ -27,21 +29,9 @@ const weather = makeWeather(scene, windU, audio);
 const delMat = new MeshLambertMaterial({ color: '#d9453b' });
 const ghostMat = new MeshBasicMaterial({ color: '#3fc060', transparent: true, opacity: 0.55, depthWrite: false, fog: false });
 
-// Rejilla del suelo: 1 m (clara) y 0,5 m (tenue).
-function mkGrid(step, opacity) {
-  const v = [];
-  for (let u = 0; u <= 2 * HALF + 1e-6; u += step) v.push(u - HALF, 0, -HALF, u - HALF, 0, HALF, -HALF, 0, u - HALF, HALF, 0, u - HALF);
-  const g = new BufferGeometry();
-  g.setAttribute('position', new Float32BufferAttribute(v, 3));
-  const l = new LineSegments(g, new LineBasicMaterial({ color: '#ffffff', transparent: true, opacity, depthWrite: false }));
-  l.position.y = 0.004;
-  scene.add(l);
-  return l;
-}
-const gridMain = mkGrid(1, 0.22), gridHalf = mkGrid(0.5, 0.1);
-
 // ------------------------------ Estado -------------------------------------
-const st = { sel: 'floor1', rot: 0, anchor: 0, snap: 1, mode: 'build' };
+const st = { sel: 'floor1', rot: 0, anchor: 0, snap: 0, mode: 'build', slot: 1 };   // snap 0 = colocación libre; slot 1 = martillo, 2 = mano
+const hammer = () => st.slot === 1;
 const placed = new Map();      // clave geométrica -> { mesh, pts, torch }
 const pieces = new Group();
 scene.add(pieces);
@@ -71,12 +61,12 @@ let petT = 0, heartT = 0, stuck = 0, lightT = 0;
 function updateCamera() {
   const cp = Math.cos(cam.pitch), d = new Vector3(Math.sin(cam.yaw) * cp, -Math.sin(cam.pitch), Math.cos(cam.yaw) * cp);
   if (cam.first) {
-    camera.position.set(P.x, P.y + 1.4, P.z);
+    camera.position.set(P.x, P.y + 1.38, P.z);
     camera.lookAt(camera.position.clone().add(d));
   } else {
     const t = new Vector3(P.x, P.y + 1.25, P.z);
     camera.position.copy(t).addScaledVector(d, -cam.dist);
-    camera.position.y = Math.max(0.3, camera.position.y);
+    camera.position.y = Math.max(heightAt(camera.position.x, camera.position.z) + 0.35, camera.position.y);
     camera.lookAt(t);
   }
   camera.updateMatrixWorld();
@@ -99,7 +89,7 @@ function step(dt, t) {
     const rt = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
     mx = f[0] * fw + r[0] * rt; mz = f[1] * fw + r[1] * rt;
   }
-  const len = Math.hypot(mx, mz), speed = len ? (keys.ShiftLeft || keys.ShiftRight ? 5.2 : 3.2) : 0;
+  const len = Math.hypot(mx, mz), speed = len ? (keys.ShiftLeft || keys.ShiftRight ? 4.4 : 1.9) : 0;
   if (len) {
     mx /= len; mz /= len;
     if (!cam.first) P.face = lerpAngle(P.face, Math.atan2(mx, mz), 1 - Math.exp(-12 * dt));
@@ -176,7 +166,7 @@ function setHover(mesh) {
 // puntero en pantalla (radio 26 px) o, si no hay ninguno, el vértice de la
 // rejilla del suelo bajo el puntero.
 function target() {
-  let best = null, bd = 26 * 26;
+  let best = null, bd = 22 * 22;
   const w = innerWidth / 2, h = innerHeight / 2;
   for (const { pts } of placed.values()) {
     for (let i = 0; i < pts.length; i += 3) {
@@ -187,16 +177,17 @@ function target() {
     }
   }
   if (best) return best;
-  const o = ray.ray.origin, d = ray.ray.direction, t = -o.y / d.y;
-  if (!(t > 0)) return null;
-  const sn = (v) => Math.round(v / st.snap) * st.snap;
-  return [sn(o.x + d.x * t) + 0, 0, sn(o.z + d.z * t) + 0];
+  const hit = raycastTerrain(ray.ray.origin, ray.ray.direction);
+  if (!hit) return null;
+  if (!st.snap) return hit;                                  // colocación libre
+  const sn = (v) => Math.round(v / st.snap) * st.snap + 0, x = sn(hit[0]), z = sn(hit[2]);
+  return [x, heightAt(x, z), z];
 }
 
 // Recalcula la vista previa (o el resaltado en modo eliminar).
 function refresh() {
   dirty = false;
-  if (!havePointer) { ghost.visible = marker.visible = false; setHover(null); return; }
+  if (!havePointer || !hammer()) { ghost.visible = marker.visible = false; setHover(null); return; }
   ray.setFromCamera(ndc, camera);
   if (st.mode === 'delete') {
     ghost.visible = marker.visible = false;
@@ -231,6 +222,7 @@ function removePiece(mesh) {
 }
 
 function act() {
+  if (!hammer()) return;
   if (st.mode === 'delete') {
     if (hovered) removePiece(hovered);
   } else {
@@ -277,7 +269,7 @@ canvas.addEventListener('pointermove', (e) => {
 });
 canvas.addEventListener('pointerup', (e) => {
   if (down && down.b === 0 && !down.drag) { point(e); updateCamera(); refresh(); act(); }
-  else if (down && down.b === 1 && !down.drag) {           // clic central: borra la pieza bajo el puntero
+  else if (down && down.b === 1 && !down.drag && hammer()) {           // clic central: borra la pieza bajo el puntero
     point(e);
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObjects(pieces.children, false)[0];
@@ -337,31 +329,38 @@ function syncUI() {
   for (const id in pieceBtns) pieceBtns[id].classList.toggle('on', st.mode === 'build' && id === st.sel);
   $('m-build').classList.toggle('on', st.mode === 'build');
   $('m-del').classList.toggle('on', st.mode === 'delete');
+  $('s0').classList.toggle('on', st.snap === 0);
   $('s1').classList.toggle('on', st.snap === 1);
   $('s05').classList.toggle('on', st.snap === 0.5);
+  document.querySelectorAll('#hotbar .slot').forEach((b) => b.classList.toggle('on', +b.dataset.slot === st.slot));
+  $('ui').style.display = hammer() ? '' : 'none';
+  $('hint').textContent = hammer() ? '2 · mano  →  E acariciar al perrito' : 'E · acariciar al perrito';
+  human.setTool(hammer());
   $('anc').textContent = `${st.anchor + 1} / ${PIECES[st.sel].anchors.length}`;
   $('ang').textContent = `${st.rot * 45}°`;
   $('view').textContent = cam.first ? '1ª persona' : '3ª persona';
-  gridHalf.visible = st.snap === 0.5;
   dirty = true;
 }
 
 function select(id) { st.sel = id; st.anchor = 0; st.mode = 'build'; ghost.geometry = geometryOf(id); syncUI(); }
 function setMode(m) { st.mode = m; syncUI(); }
 function setSnap(s) { st.snap = s; syncUI(); }
+function setSlot(n) { st.slot = n; if (!hammer()) { setHover(null); } syncUI(); }
 function rotate(d) { st.rot = (st.rot + d + STEPS) % STEPS; syncUI(); }
 function anchor(d) { const n = PIECES[st.sel].anchors.length; st.anchor = (st.anchor + d + n) % n; syncUI(); }
-function zoom(f) { cam.dist = Math.max(2, Math.min(30, cam.dist * f)); dirty = true; }
+function zoom(f) { cam.dist = Math.max(1.2, Math.min(30, cam.dist * f)); dirty = true; }
 function toggleView() { cam.first = !cam.first; cam.pitch = cam.first ? 0 : 0.3; syncUI(); }
 function pet() {
-  if (petT > 0 || Math.hypot(P.x - D.x, P.z - D.z) > 2.3) return;
+  if (hammer() || petT > 0 || Math.hypot(P.x - D.x, P.z - D.z) > 2.3) return;
   petT = 1.8; heartT = 0;
   P.face = Math.atan2(D.x - P.x, D.z - P.z);
 }
 
 $('m-build').onclick = () => setMode('build');
 $('m-del').onclick = () => setMode('delete');
+$('s0').onclick = () => setSnap(0);
 $('s1').onclick = () => setSnap(1);
+document.querySelectorAll('#hotbar .slot').forEach((b) => { b.onclick = () => setSlot(+b.dataset.slot); });
 $('s05').onclick = () => setSnap(0.5);
 $('rot').onclick = () => rotate(1);
 $('ancp').onclick = () => anchor(-1);
@@ -374,7 +373,7 @@ $('view').onclick = toggleView;
 let wheelAcc = 0;
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  if (st.mode !== 'build' || e.ctrlKey) { zoom(Math.exp(e.deltaY * 0.0015)); return; }
+  if (!hammer() || st.mode !== 'build' || e.ctrlKey) { zoom(Math.exp(e.deltaY * 0.0015)); return; }
   wheelAcc += e.deltaY * (e.deltaMode === 1 ? 33 : 1);
   if (Math.abs(wheelAcc) >= 50) { rotate(wheelAcc > 0 ? 1 : -1); wheelAcc = 0; }
 }, { passive: false });
@@ -384,10 +383,14 @@ addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   keys[e.code] = true;
   switch (e.code) {
-    case 'KeyR': rotate(e.shiftKey ? -1 : 1); break;
-    case 'KeyQ': anchor(e.shiftKey ? -1 : 1); break;
-    case 'KeyG': setSnap(st.snap === 1 ? 0.5 : 1); break;
-    case 'KeyX': case 'Delete': setMode(st.mode === 'delete' ? 'build' : 'delete'); break;
+    case 'Digit1': case 'Numpad1': setSlot(1); break;
+    case 'Digit2': case 'Numpad2': setSlot(2); break;
+    case 'Digit3': case 'Numpad3': setSlot(3); break;
+    case 'Digit4': case 'Numpad4': setSlot(4); break;
+    case 'KeyR': if (hammer()) rotate(e.shiftKey ? -1 : 1); break;
+    case 'KeyQ': if (hammer()) anchor(e.shiftKey ? -1 : 1); break;
+    case 'KeyG': if (hammer()) setSnap(st.snap === 0 ? 0.5 : st.snap === 0.5 ? 1 : 0); break;
+    case 'KeyX': case 'Delete': if (hammer()) setMode(st.mode === 'delete' ? 'build' : 'delete'); break;
     case 'Escape': setMode('build'); break;
     case 'KeyV': toggleView(); break;
     case 'KeyM': toggleSound(); break;
