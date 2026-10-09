@@ -21,7 +21,11 @@ export function makeHuman() {
   const S = { mixer: null, act: {}, B: {}, ready: false, strands: [], hammer: null };
   const qs = new Quaternion(), eu = new Euler();
 
-  new GLTFLoader().load(manUrl, (g) => {
+  // El GLB va incrustado como data URL: se decodifica a mano y se usa parse()
+  // (fetch de data: puede estar bloqueado por la política de seguridad de la página).
+  const bin = atob(manUrl.slice(manUrl.indexOf(',') + 1)), buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  new GLTFLoader().parse(buf.buffer, '', (g) => {
     const model = g.scene;
     wrap.add(model);
     const B = S.B;
@@ -122,7 +126,7 @@ export function makeHuman() {
     for (const c of g.animations) { const a = S.mixer.clipAction(c); a.play(); a.setEffectiveWeight(0); S.act[c.name] = a; }
     S.ready = true;
     S.hammer.visible = S.tool !== false;
-  });
+  }, (err) => console.error('No se pudo cargar el personaje', err));
 
   let petBlend = 0;
   return {
