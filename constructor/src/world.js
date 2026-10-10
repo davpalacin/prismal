@@ -2,6 +2,7 @@ import {
   Color, ConeGeometry, CylinderGeometry, DoubleSide, Float32BufferAttribute, IcosahedronGeometry, InstancedMesh,
   Matrix4, Mesh, MeshLambertMaterial, PlaneGeometry, Quaternion, BufferGeometry, Euler, Vector2, Vector3,
 } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { T } from './textures.js';
 import { CLEAR_R, fbm, heightAt } from './terrain.js';
 
@@ -135,31 +136,78 @@ export function buildWorld(scene, addCircle, windU) {
     scene.add(mesh);
   }
 
-  // Bosque: tronco con corteza + dos conos con follaje, sobre el relieve.
+  // Bosque: tres variantes irregulares (dos pinos y un árbol de copa lobulada),
+  // con troncos curvados y copas deformadas, sobre el relieve.
   {
+    const variants = [treeVariant(0), treeVariant(1), treeVariant(2)];
     const trees = [];
     for (let tries = 0; tries < 9000 && trees.length < 650; tries++) {
       const x = (rnd() * 2 - 1) * (SIZE - 1), z = (rnd() * 2 - 1) * (SIZE - 1);
       if (Math.hypot(x, z) < CLEARING + rnd() * 3) continue;
       if (trees.some((t) => Math.hypot(t[0] - x, t[1] - z) < 1.6)) continue;
-      trees.push([x, z, 1.2 + rnd() * 1.2, rnd()]);
+      trees.push([x, z, 1.1 + rnd() * 1.2, rnd(), Math.floor(rnd() * 3)]);
     }
-    const trunkG = new CylinderGeometry(0.1, 0.17, 1.4, 7, 1).translate(0, 0.7, 0);
-    const coneA = new ConeGeometry(1, 2, 8, 2).translate(0, 1.9, 0), coneB = new ConeGeometry(0.7, 1.7, 8, 2).translate(0, 3.0, 0);
-    const leaf = () => new MeshLambertMaterial({ map: T.leaf });
-    const matA = leaf(), matB = leaf();
-    windify(matA, windU, 0.012, 2);
-    windify(matB, windU, 0.012, 2);
-    const mats = [new MeshLambertMaterial({ map: T.bark, color: '#c9a37a' }), matA, matB];
-    const ms = [trunkG, coneA, coneB].map((g, i) => new InstancedMesh(g, mats[i], trees.length));
-    trees.forEach(([x, z, s, r], i) => {
-      m4.compose(new Vector3(x, heightAt(x, z) - 0.1, z), q.setFromAxisAngle(up, r * 6), new Vector3(s, s, s));
-      ms.forEach((mesh, j) => {
-        mesh.setMatrixAt(i, m4);
-        if (j) mesh.setColorAt(i, cl.setHSL(0.34 + r * 0.06, 0.5, 0.2 + r * 0.1 + j * 0.03));
-      });
-      if (Math.abs(x) < BUILD + 2 && Math.abs(z) < BUILD + 2) addCircle(x, z, 0.2 * s + 0.08);
+    const bark = new MeshLambertMaterial({ map: T.bark, color: '#c9a37a' });
+    const make = (g, mat, n) => new InstancedMesh(g, mat, n);
+    const groups = variants.map((v, k) => {
+      const list = trees.filter((t) => t[4] === k);
+      const leafMat = new MeshLambertMaterial({ map: T.leaf });
+      windify(leafMat, windU, 0.012, 2);
+      return { list, trunk: make(v.trunk, bark, list.length), crown: make(v.crown, leafMat, list.length) };
     });
-    ms.forEach((mesh) => scene.add(mesh));
+    const e = new Euler();
+    for (const g of groups) {
+      g.list.forEach(([x, z, s, r, k], i) => {
+        const sx = s * (0.85 + ((r * 7) % 1) * 0.3), sz = s * (0.85 + ((r * 13) % 1) * 0.3);
+        m4.compose(new Vector3(x, heightAt(x, z) - 0.1, z), q.setFromEuler(e.set((r - 0.5) * 0.12, r * 6.28, ((r * 5) % 1 - 0.5) * 0.12)), new Vector3(sx, s * (0.9 + ((r * 3) % 1) * 0.25), sz));
+        g.trunk.setMatrixAt(i, m4);
+        g.crown.setMatrixAt(i, m4);
+        g.crown.setColorAt(i, cl.setHSL(0.27 + r * 0.1, 0.5, 0.2 + r * 0.12));
+        if (Math.abs(x) < BUILD + 2 && Math.abs(z) < BUILD + 2) addCircle(x, z, 0.2 * s + 0.08);
+      });
+      scene.add(g.trunk, g.crown);
+    }
   }
+}
+
+// Geometría orgánica de árboles: ruido radial, caída de las ramas y normales suaves.
+function treeVariant(kind) {
+  const off = kind * 17.3;
+  const warp = (g, amp, droop) => {
+    const p = g.attributes.position, v = new Vector3();
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i);
+      const r = Math.hypot(v.x, v.z), a = Math.atan2(v.z, v.x);
+      const f = 1 + (fbm(Math.cos(a) * 1.6 + off + v.y * 0.7, Math.sin(a) * 1.6 + v.y * 0.5) - 0.47) * amp * 2;
+      v.x *= f; v.z *= f;
+      v.y -= droop * r * r + (fbm(v.x * 3 + off, v.z * 3) - 0.47) * 0.12;
+      p.setXYZ(i, v.x, v.y, v.z);
+    }
+    return g;
+  };
+  const merged = (list) => {
+    const parts = list.map((g) => (g.index ? g.toNonIndexed() : g));
+    parts.forEach((g) => g.computeVertexNormals());
+    return mergeGeometries(parts);
+  };
+  const trunk = new CylinderGeometry(0.075, 0.17, 1.8, 9, 6);
+  { // tronco: base ensanchada, ligera curva y rugosidad
+    const p = trunk.attributes.position, v = new Vector3();
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i);
+      const y = v.y + 0.9, flare = 1 + Math.max(0, 0.35 - y) * 1.6;
+      const n = 1 + (fbm(v.x * 6 + off, v.y * 3 + v.z * 6) - 0.47) * 0.35;
+      p.setXYZ(i, v.x * flare * n + Math.sin(y * 1.7 + off) * 0.05 * y, y, v.z * flare * n + Math.cos(y * 1.3 + off) * 0.04 * y);
+    }
+    trunk.computeVertexNormals();
+  }
+  let crown;
+  if (kind < 2) {                       // pino: copas apiladas, irregulares y caídas
+    const tiers = kind ? [[1.05, 1.5, 1.4], [0.85, 1.4, 2.2], [0.62, 1.3, 3.0], [0.4, 1.1, 3.7]] : [[1.15, 1.9, 1.3], [0.9, 1.7, 2.3], [0.6, 1.5, 3.2]];
+    crown = merged(tiers.map(([r, h, y], i) => warp(new ConeGeometry(r, h, 16, 4).translate(0, y, 0), 0.22, 0.09 / r).rotateY(i * 1.3)));
+  } else {                              // frondoso: racimo de lóbulos irregulares
+    const blobs = [[0, 2.6, 0, 0.95], [0.6, 2.2, 0.2, 0.7], [-0.55, 2.3, -0.3, 0.72], [0.1, 3.2, 0.3, 0.6], [-0.2, 2.1, 0.65, 0.62]];
+    crown = merged(blobs.map(([x, y, z, r], i) => warp(new IcosahedronGeometry(r, 3).translate(x, y, z), 0.28, 0).rotateY(i)));
+  }
+  return { trunk, crown };
 }

@@ -10,7 +10,7 @@ import { T } from './textures.js';
 // "Xbot" de Mixamo, tomado del repositorio de ejemplos de three.js. Sobre el
 // esqueleto se viste al constructor medieval: túnica, calzas, botas, mandil,
 // bufanda, barba y melena (mechones que ondean con el viento) y martillo.
-const SCALE = 0.85;                       // 1,77 m del modelo → 1,5 m
+const SCALE = 1.2 / 1.77;                 // 1,77 m del modelo → 1,2 m
 const V = (x, y, z) => new Vector3(x, y, z);
 const M = (c, o = {}) => new MeshLambertMaterial({ color: c, ...o });
 
@@ -49,7 +49,7 @@ export function makeHuman() {
       return hang(m, bone);
     };
     const limb = (a, b, ra, rb, mat, bone) => {
-      const d = b.clone().sub(a), len = d.length(), m = new Mesh(new CylinderGeometry(rb, ra, len, 10, 1), mat);
+      const d = b.clone().sub(a), len = d.length(), m = new Mesh(new CylinderGeometry(rb, ra, len, 18, 1), mat);
       m.position.copy(a).add(b).multiplyScalar(0.5);
       m.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
       return hang(m, bone);
@@ -139,8 +139,8 @@ export function makeHuman() {
       let wi = Math.max(0, 1 - speed / 0.5), wr = Math.min(1, Math.max(0, (speed - 2.6) / 1.4)), ww = Math.max(0, 1 - wi - wr);
       if (air) { wi = 0; ww = 0.2; wr = 0.8; }
       A.idle.setEffectiveWeight(wi); A.walk.setEffectiveWeight(ww); A.run.setEffectiveWeight(wr);
-      A.walk.timeScale = Math.max(0.3, speed / 1.15);
-      A.run.timeScale = air ? 0.3 : Math.max(0.5, speed / 3.1);
+      A.walk.timeScale = Math.max(0.3, speed / 0.95);
+      A.run.timeScale = air ? 0.3 : Math.max(0.5, speed / 2.5);
       S.mixer.update(dt);
       // acariciar: se inclina hacia delante y baja la cabeza
       petBlend += ((pet ? 1 : 0) - petBlend) * Math.min(1, dt * 6);

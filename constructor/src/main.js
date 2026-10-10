@@ -3,7 +3,7 @@ import {
   Vector2, Vector3, WebGLRenderer, Group, BufferGeometry, Float32BufferAttribute, LineBasicMaterial, LineSegments,
   Uniform,
 } from 'three';
-import { HALF, MENU, PIECES, STEPS, geometryOf, inBounds, keyOf, place, worldPoint } from './pieces.js';
+import { HALF, MENU, PIECES, STEPS, geometryOf, inBounds, keyOf, leafGeometryOf, place, worldPoint } from './pieces.js';
 import { makeThumbs } from './thumbs.js';
 import { buildWorld } from './world.js';
 import { texturesReady } from './textures.js';
@@ -37,11 +37,15 @@ const pieces = new Group();
 scene.add(pieces);
 const ghost = new Mesh(geometryOf(st.sel), ghostMat);
 ghost.visible = false;
+const ghostLeaf = new Mesh(undefined, ghostMat);
+ghostLeaf.visible = false;
+ghost.add(ghostLeaf);
 scene.add(ghost);
 const marker = new Mesh(new SphereGeometry(0.08, 10, 8), new MeshBasicMaterial({ color: '#ffd23f', depthTest: false, fog: false }));
 marker.renderOrder = 10;
 marker.visible = false;
 scene.add(marker);
+const doors = [];
 let cur = null, curValid = false, hovered = null, havePointer = false, px = 0, py = 0, dirty = true;
 
 // Antorchas: 8 luces puntuales fijas (el número no cambia, así no se recompilan
@@ -54,17 +58,18 @@ const P = { x: 0, y: 0, z: 6, vy: 0, onGround: true, face: Math.PI };
 const D = { x: 1.2, y: 0, z: 7.2, vy: 0, onGround: true, face: Math.PI };
 const human = makeHuman(), dog = makeDog();
 scene.add(human.group, dog.group);
-const cam = { yaw: Math.PI, pitch: 0.3, dist: 5, first: false };
+const cam = { yaw: Math.PI, pitch: 0.3, dist: 4, first: false };
+const H = 1.2;   // altura del personaje (m)
 const keys = {};
 let petT = 0, heartT = 0, stuck = 0, lightT = 0;
 
 function updateCamera() {
   const cp = Math.cos(cam.pitch), d = new Vector3(Math.sin(cam.yaw) * cp, -Math.sin(cam.pitch), Math.cos(cam.yaw) * cp);
   if (cam.first) {
-    camera.position.set(P.x, P.y + 1.38, P.z);
+    camera.position.set(P.x, P.y + H * 0.92, P.z);
     camera.lookAt(camera.position.clone().add(d));
   } else {
-    const t = new Vector3(P.x, P.y + 1.25, P.z);
+    const t = new Vector3(P.x, P.y + H * 0.85, P.z);
     camera.position.copy(t).addScaledVector(d, -cam.dist);
     camera.position.y = Math.max(heightAt(camera.position.x, camera.position.z) + 0.35, camera.position.y);
     camera.lookAt(t);
@@ -89,14 +94,17 @@ function step(dt, t) {
     const rt = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
     mx = f[0] * fw + r[0] * rt; mz = f[1] * fw + r[1] * rt;
   }
-  const len = Math.hypot(mx, mz), speed = len ? (keys.ShiftLeft || keys.ShiftRight ? 4.4 : 1.9) : 0;
+  const running = keys.ShiftLeft || keys.ShiftRight;
+  const len = Math.hypot(mx, mz), speed = len ? (running ? 3.6 : 1.5) : 0;
   if (len) {
     mx /= len; mz /= len;
     if (!cam.first) P.face = lerpAngle(P.face, Math.atan2(mx, mz), 1 - Math.exp(-12 * dt));
+    // al correr, la cámara gira suavemente hasta quedar detrás del personaje; al caminar no se mueve
+    if (running && !cam.first) cam.yaw = lerpAngle(cam.yaw, P.face, 1 - Math.exp(-2.6 * dt));
   }
   if (cam.first) P.face = cam.yaw;
   if (keys.Space && P.onGround && petT <= 0) { P.vy = phys.JUMP_V; P.onGround = false; }
-  phys.moveActor(P, mx * speed * dt, mz * speed * dt, dt, 0.28, 1.5);
+  phys.moveActor(P, mx * speed * dt, mz * speed * dt, dt, 0.22, H);
   human.group.position.set(P.x, P.y, P.z);
   human.group.rotation.y = P.face;
   human.group.visible = !cam.first;
@@ -128,7 +136,13 @@ function step(dt, t) {
   dog.group.position.set(D.x, D.y, D.z);
   dog.group.rotation.y = D.face;
   dog.update(dt, dspeed, petT > 0, localWind(D.face));
-  $('hint').style.display = dp < 2.3 && petT <= 0 ? 'block' : 'none';
+  for (const d of doors) {
+    d.t += Math.sign((d.open ? 1 : 0) - d.t) * Math.min(Math.abs((d.open ? 1 : 0) - d.t), dt * 2.2);
+    d.leaf.rotation.y = -d.t * 1.7;
+  }
+  const near = nearest();
+  $('hint').style.display = near ? 'block' : 'none';
+  if (near) $('hint').textContent = (hammer() ? '2 · mano → ' : '') + (near.type === 'door' ? 'E · abrir / cerrar puerta' : 'E · acariciar al perrito');
 
   // --- Luces de antorchas ---
   lightT -= dt;
@@ -156,10 +170,13 @@ function heart() {
 // ----------------------------- Interacción ---------------------------------
 const ndc = new Vector2(), ray = new Raycaster(), tmp = new Vector3();
 
+const paint = (root, mat) => root.traverse((o) => { if (o.isMesh) o.material = mat || o.userData.m; });
+const rootOf = (o) => { while (o.parent && o.parent !== pieces) o = o.parent; return o; };
+const pick = () => { const h = ray.intersectObjects(pieces.children, true)[0]; return h ? rootOf(h.object) : null; };
 function setHover(mesh) {
-  if (hovered && hovered !== mesh) hovered.material = hovered.userData.m;
+  if (hovered && hovered !== mesh) paint(hovered, null);
   hovered = mesh;
-  if (mesh) mesh.material = delMat;
+  if (mesh) paint(mesh, delMat);
 }
 
 // Punto de anclaje objetivo: el anclaje de una pieza colocada más cercano al
@@ -191,7 +208,7 @@ function refresh() {
   ray.setFromCamera(ndc, camera);
   if (st.mode === 'delete') {
     ghost.visible = marker.visible = false;
-    setHover(ray.intersectObjects(pieces.children, false)[0]?.object ?? null);
+    setHover(pick());
     return;
   }
   setHover(null);
@@ -215,6 +232,7 @@ function removePiece(mesh) {
     placed.delete(k);
     phys.removeColliders(e);
     if (e.torch) torches.splice(torches.indexOf(e.torch), 1);
+    if (e.door) { phys.removeColliders(e.door.owner); doors.splice(doors.indexOf(e.door), 1); }
   }
   pieces.remove(mesh);
   if (hovered === mesh) hovered = null;
@@ -238,6 +256,15 @@ function act() {
     const e = { mesh: m, pts: def.anchors.flatMap((a) => worldPoint(cur, a)), torch: null };
     if (def.light) { const [x, y, z] = worldPoint(cur, def.light); e.torch = { x, y, z }; torches.push(e.torch); lightT = 0; }
     phys.addColliders(e, cur, def);
+    if (def.leaf) {                                   // puerta: la hoja es un hijo que gira sobre la bisagra
+      const leaf = new Mesh(leafGeometryOf(cur.id), woodMat);
+      leaf.userData.m = woodMat;
+      leaf.position.set(...def.door.pivot);
+      m.add(leaf);
+      e.door = { leaf, t: 0, open: false, owner: {}, def, pl: { ...cur } };
+      phys.addColliders(e.door.owner, cur, { solid: [def.door.leafSolid] });
+      doors.push(e.door);
+    }
     placed.set(keyOf(cur), e);
   }
   dirty = true;
@@ -272,8 +299,8 @@ canvas.addEventListener('pointerup', (e) => {
   else if (down && down.b === 1 && !down.drag && hammer()) {           // clic central: borra la pieza bajo el puntero
     point(e);
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects(pieces.children, false)[0];
-    if (hit) removePiece(hit.object);
+    const hit = pick();
+    if (hit) removePiece(hit);
   }
   down = null;
 });
@@ -300,7 +327,7 @@ for (const [name, items] of MENU) {
 }
 // Las miniaturas se generan una vez, cuando las texturas ya están cargadas.
 texturesReady().then(() => {
-  const thumbs = makeThumbs(ids, geometryOf, matFor);
+  const thumbs = makeThumbs(ids, geometryOf, matFor, leafGeometryOf);
   for (const id of ids) imgs[id].src = thumbs[id];
 });
 
@@ -334,7 +361,6 @@ function syncUI() {
   $('s05').classList.toggle('on', st.snap === 0.5);
   document.querySelectorAll('#hotbar .slot').forEach((b) => b.classList.toggle('on', +b.dataset.slot === st.slot));
   $('ui').style.display = hammer() ? '' : 'none';
-  $('hint').textContent = hammer() ? '2 · mano  →  E acariciar al perrito' : 'E · acariciar al perrito';
   human.setTool(hammer());
   $('anc').textContent = `${st.anchor + 1} / ${PIECES[st.sel].anchors.length}`;
   $('ang').textContent = `${st.rot * 45}°`;
@@ -342,7 +368,13 @@ function syncUI() {
   dirty = true;
 }
 
-function select(id) { st.sel = id; st.anchor = 0; st.mode = 'build'; ghost.geometry = geometryOf(id); syncUI(); }
+function select(id) {
+  st.sel = id; st.anchor = 0; st.mode = 'build'; ghost.geometry = geometryOf(id);
+  const lg = leafGeometryOf(id);
+  ghostLeaf.visible = !!lg;
+  if (lg) { ghostLeaf.geometry = lg; ghostLeaf.position.set(...PIECES[id].door.pivot); }
+  syncUI();
+}
 function setMode(m) { st.mode = m; syncUI(); }
 function setSnap(s) { st.snap = s; syncUI(); }
 function setSlot(n) { st.slot = n; if (!hammer()) { setHover(null); } syncUI(); }
@@ -350,8 +382,29 @@ function rotate(d) { st.rot = (st.rot + d + STEPS) % STEPS; syncUI(); }
 function anchor(d) { const n = PIECES[st.sel].anchors.length; st.anchor = (st.anchor + d + n) % n; syncUI(); }
 function zoom(f) { cam.dist = Math.max(1.2, Math.min(30, cam.dist * f)); dirty = true; }
 function toggleView() { cam.first = !cam.first; cam.pitch = cam.first ? 0 : 0.3; syncUI(); }
-function pet() {
-  if (hammer() || petT > 0 || Math.hypot(P.x - D.x, P.z - D.z) > 2.3) return;
+// Lo más cercano con lo que se puede interactuar con la mano: manilla de puerta o perro.
+const DOOR_R = 1.5, DOG_R = 2.0;
+function nearest() {
+  let best = null, bd = Infinity;
+  for (const d of doors) {
+    const p = d.leaf.localToWorld(new Vector3(...d.def.door.handle)), dd = Math.hypot(p.x - P.x, p.z - P.z);
+    if (dd < DOOR_R && Math.abs(p.y - P.y) < 1.4 && dd < bd) { bd = dd; best = { type: 'door', door: d }; }
+  }
+  const dp = Math.hypot(P.x - D.x, P.z - D.z);
+  if (dp < DOG_R && petT <= 0 && !best) best = { type: 'dog' };
+  return best;
+}
+function interact() {
+  if (hammer()) return;
+  const n = nearest();
+  if (!n) return;
+  if (n.type === 'door') {
+    const d = n.door;
+    d.open = !d.open;
+    if (d.open) phys.removeColliders(d.owner);
+    else phys.addColliders(d.owner, d.pl, { solid: [d.def.door.leafSolid] });
+    return;
+  }
   petT = 1.8; heartT = 0;
   P.face = Math.atan2(D.x - P.x, D.z - P.z);
 }
@@ -394,7 +447,7 @@ addEventListener('keydown', (e) => {
     case 'Escape': setMode('build'); break;
     case 'KeyV': toggleView(); break;
     case 'KeyM': toggleSound(); break;
-    case 'KeyE': pet(); break;
+    case 'KeyE': interact(); break;
     case 'Equal': case 'NumpadAdd': zoom(0.8); break;
     case 'Minus': case 'NumpadSubtract': zoom(1.25); break;
     case 'Space': case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight': break;

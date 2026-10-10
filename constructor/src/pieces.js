@@ -78,11 +78,12 @@ const roof = (rise, Wd) => (b) => {
 };
 
 
-// Pared con el borde superior cortado en diagonal (pendiente k = tan del tejado):
-// altura 1 m en x=0 y 1+k·x en el resto; coincide con la línea del tejado.
+// Pared con el borde superior cortado en diagonal (pendiente k = tan del tejado).
+// Altura total 1 m: 1 − k·W en x=0 y 1 m en x=W; la diagonal coincide con la
+// línea del tejado (alero en la esquina baja, cumbrera en la alta).
 const gable = (k, W) => (b) => {
   b.grain = [0, 1, 0];
-  const H = (x) => 1 + k * x - 0.04;
+  const H = (x) => 1 - k * W + k * x - 0.04;
   const poly = (x0, x1, t) => [[x0, 0, t], [x1, 0, t], [x1, H(x1), t], [x0, H(x0), t]];
   b.prism(poly(0, W, 0.03), [0, 0, 1], 0.06, DARK);
   for (let i = 0; i < W / STEP; i++) {
@@ -117,20 +118,26 @@ const cornerRoof = (r, outer) => (b) => {
   if (outer) b.obox([0.028, 0, -0.028], [1, r, 1], [-0.057, 0, 0.057], [0, 0.045, 0], DARK);
 };
 
-// Puerta 1 × 2 m: marco con la hoja entreabierta.
-const door = (b) => {
+// Puerta de 1 × 1 m: el marco es la pieza y la hoja es un objeto aparte que
+// gira sobre la bisagra (origen en x=0,08) al abrir y cerrar.
+const doorFrame = (b) => {
   b.grain = [0, 1, 0];
-  b.box(0, 0, -0.07, 0.08, 2, 0.07, WOOD[1]);
-  b.box(0.92, 0, -0.07, 1, 2, 0.07, WOOD[1]);
-  b.box(0, 1.85, -0.07, 1, 2, 0.07, WOOD[0]);
-  const a = Math.PI * 0.36, d = [Math.cos(a), 0, Math.sin(a)], n = [-Math.sin(a), 0, Math.cos(a)], w = 0.84;
-  const at = (u, y, v) => [0.08 + d[0] * u + n[0] * v, y, d[2] * u + n[2] * v];
-  for (let i = 0; i < 3; i++) {
-    const u0 = (i * w) / 3 + 0.004, u1 = ((i + 1) * w) / 3 - 0.004;
-    b.obox(at(u0, 0, 0), [d[0] * (u1 - u0), 0, d[2] * (u1 - u0)], [0, 1.84, 0], [n[0] * 0.05, 0, n[2] * 0.05], WOOD[(i + 1) % 3]);
+  b.box(0, 0, -0.07, 0.08, 1, 0.07, WOOD[1]);
+  b.box(0.92, 0, -0.07, 1, 1, 0.07, WOOD[1]);
+  b.grain = [1, 0, 0];
+  b.box(0, 0.93, -0.07, 1, 1, 0.07, WOOD[0]);
+  for (const y of [0.2, 0.7]) b.box(0.07, y, -0.085, 0.12, y + 0.07, 0.085, IRON);          // goznes
+};
+const doorLeaf = (b) => {
+  b.grain = [0, 1, 0];
+  const w = 0.84;
+  for (let i = 0; i < 3; i++) b.box((i * w) / 3 + 0.004, 0, -0.025, ((i + 1) * w) / 3 - 0.004, 0.93, 0.025, WOOD[(i + 1) % 3]);
+  b.grain = [1, 0, 0];
+  for (const y of [0.16, 0.7]) b.box(0, y, -0.032, w, y + 0.08, 0.032, IRON);             // herrajes
+  for (const s of [-1, 1]) {                                                              // manilla
+    b.box(0.7, 0.45, s * 0.032, 0.78, 0.5, s * 0.058, IRON);
+    b.box(0.7, 0.45, s * 0.058, 0.725, 0.55, s * 0.085, IRON);
   }
-  for (const y of [0.3, 1.4]) b.obox(at(0, y, 0.05), [d[0] * w, 0, d[2] * w], [0, 0.1, 0], [n[0] * 0.02, 0, n[2] * 0.02], IRON);
-  b.obox(at(w - 0.1, 0.95, 0.05), [0.05 * d[0], 0, 0.05 * d[2]], [0, 0.05, 0], [n[0] * 0.04, 0, n[2] * 0.04], IRON);   // aldaba
 };
 
 // Pared de vidrio de 0,5 × 1 m con marco de madera.
@@ -179,7 +186,7 @@ function grid(size) {
 
 function add(id, label, size, build, o = {}) {
   PIECES[id] = { id, label, size, build, keys: o.keys || corners(size), anchors: o.anchors || grid(size),
-    solid: o.solid || [], ramp: o.ramp || null, light: o.light || null };
+    solid: o.solid || [], ramp: o.ramp || null, light: o.light || null, leaf: o.leaf || null, door: o.door || null };
 }
 // Tejado: los cuatro bordes paralelos al ancho (alero, cumbrera y sus bases).
 const roofAnchors = (rise, W) => [[0, 0], [RUN, 0], [0, rise], [RUN, rise]]
@@ -187,11 +194,11 @@ const roofAnchors = (rise, W) => [[0, 0], [RUN, 0], [0, rise], [RUN, rise]]
 const roofKeys = (rise, W) => [[0, 0, 0], [0, 0, W], [RUN, rise, 0], [RUN, rise, W]];
 // Pared con corte diagonal: bordes de la silueta.
 const gableAnchors = (k, W) => {
-  const top = 1 + k * W, pts = [];
+  const h0 = 1 - k * W, pts = [];
   for (let x = 0; x <= W + 1e-9; x += 0.5) pts.push([x, 0, 0]);
-  for (let y = 0.5; y < 1 - 1e-9; y += 0.5) pts.push([0, y, 0]);
-  for (let y = 0.5; y < top - 1e-9; y += 0.5) pts.push([W, y, 0]);
-  return pts.concat([[0, 1, 0], [W, top, 0], [W / 2, 1 + (k * W) / 2, 0]]);
+  for (let y = 0.5; y < h0 - 1e-9; y += 0.5) pts.push([0, y, 0]);
+  for (let y = 0.5; y < 1 - 1e-9; y += 0.5) pts.push([W, y, 0]);
+  return pts.concat([[0, h0, 0], [W, 1, 0], [W / 2, h0 + (k * W) / 2, 0]]);
 };
 const cornerAnchors = (r, outer) => grid([1, 0, 1]).concat(outer
   ? [[1, r, 1], [0.5, r / 2, 1], [1, r / 2, 0.5], [0.5, r / 2, 0.5]]
@@ -205,8 +212,8 @@ const slab = (W, H, T = 0.05) => [[0, 0, -T, W, H, T]];
 const rise26 = 0.5, rise45 = 1;
 const roofItem = (id, label, rise, W) => [id, label, [RUN, rise, W], roof(rise, W),
   { keys: roofKeys(rise, W), anchors: roofAnchors(rise, W), ramp: { kind: 'roof', rise, w: W } }];
-const gableItem = (id, label, k, W) => [id, label, [W, 1 + k * W, 0], gable(k, W),
-  { keys: [[0, 0, 0], [W, 0, 0], [W, 1 + k * W, 0], [0, 1, 0]], anchors: gableAnchors(k, W), solid: slab(W, 1) }];
+const gableItem = (id, label, k, W) => [id, label, [W, 1, 0], gable(k, W),
+  { keys: [[0, 0, 0], [W, 0, 0], [W, 1, 0], [0, 1 - k * W, 0]], anchors: gableAnchors(k, W), solid: slab(W, Math.max(0.06, 1 - k * W)) }];
 const cornerItem = (id, label, r, outer) => [id, label, [1, r, 1], cornerRoof(r, outer),
   { keys: cornerKeys(r, outer), anchors: cornerAnchors(r, outer), ramp: { kind: outer ? 'hip' : 'valley', rise: r } }];
 const diagItem = (id, label, L) => [id, label, [L, L, 0], diag(L),
@@ -219,8 +226,9 @@ export const MENU = [
              ['wall05', '0,5×1', [0.5, 1, 0], wall(0.5), { solid: slab(0.5, 1) }]]],
   ['Pared corte 26°', [gableItem('g26a', '1 m', 0.5, 1), gableItem('g26b', '0,5 m', 0.5, 0.5)]],
   ['Pared corte 45°', [gableItem('g45a', '1 m', 1, 1), gableItem('g45b', '0,5 m', 1, 0.5)]],
-  ['Puerta', [['door', '1×2', [1, 2, 0], door,
-               { solid: [[0, 0, -0.07, 0.08, 2, 0.07], [0.92, 0, -0.07, 1, 2, 0.07], [0, 1.85, -0.07, 1, 2, 0.07]] }]]],
+  ['Puerta', [['door', '1×1', [1, 1, 0], doorFrame,
+               { solid: [[0, 0, -0.07, 0.08, 1, 0.07], [0.92, 0, -0.07, 1, 1, 0.07]], leaf: doorLeaf,
+                 door: { pivot: [0.08, 0, 0], handle: [0.74, 0.5, 0], leafSolid: [0.08, 0, -0.03, 0.92, 0.93, 0.03] } }]]],
   ['Pared vidrio', [['gl05', '0,5×1', [0.5, 1, 0], glass, { solid: slab(0.5, 1) }]]],
   ['Columna', [['col1', '1 m', [0, 1, 0], column(1), { solid: [[-0.06, 0, -0.06, 0.06, 1, 0.06]] }],
                ['col05', '0,5 m', [0, 0.5, 0], column(0.5), { solid: [[-0.06, 0, -0.06, 0.06, 0.5, 0.06]] }]]],
@@ -245,6 +253,12 @@ const geoms = {};
 export function geometryOf(id) {
   if (!geoms[id]) { const b = new Builder(); PIECES[id].build(b); geoms[id] = b.geometry(); }
   return geoms[id];
+}
+const leafGeoms = {};
+export function leafGeometryOf(id) {
+  if (!PIECES[id].leaf) return null;
+  if (!leafGeoms[id]) { const b = new Builder(); PIECES[id].leaf(b); leafGeoms[id] = b.geometry(); }
+  return leafGeoms[id];
 }
 
 // ------------------------------ Colocación ---------------------------------

@@ -11,9 +11,9 @@ Para recompilar tras editar `src/` (opcional): `npm install && npm run build` �
 | Acción | Control |
 |---|---|
 | Inventario (4 huecos) | Teclas `1`–`4` o clic: **1 Martillo**, **2 Mano**, 3 y 4 vacíos (equivalen a manos libres) |
-| Caminar / correr / saltar | `WASD` o flechas / `Shift` / `Espacio` |
+| Caminar / correr / saltar | `WASD` o flechas / `Shift` / `Espacio`. Al caminar la cámara no se mueve; al correr (`Shift`) gira suavemente hasta quedar detrás del personaje |
 | Vista 1ª / 3ª persona | `V` o botón; arrastrar con el ratón para mirar |
-| **Con la mano** | `E` acaricia al perrito (cerca de él); la rueda hace zoom |
+| **Con la mano** | `E` abre/cierra una puerta (junto a su manilla) o acaricia al perrito; la rueda hace zoom |
 | **Con el martillo** | Clic izquierdo coloca (verde = válida, rojo = inválida); clic central borra la pieza bajo el puntero; la rueda gira la pieza 45° |
 | Elegir pieza | Menú con miniaturas (solo con el martillo) |
 | Anclaje de la pieza | `Q` / `Mayús+Q` o ◀ ▶ |
@@ -24,9 +24,9 @@ Para recompilar tras editar `src/` (opcional): `npm install && npm run build` �
 
 ## Mundo y piezas
 - Zona de construcción de 50 × 50 m con un claro central **llano** de 11 m de radio; fuera de él el terreno sube en colinas (hasta ~6 m), con rocas y guijarros (algunos sólidos), hierba y un bosque de ~650 árboles que se extiende más allá de la zona jugable.
-- Personaje: cuerpo y animaciones de captura de movimiento (idle / caminar / correr) del maniquí **Xbot de Mixamo**, tomado del repositorio de ejemplos de three.js, escalado a 1,5 m y vestido de constructor medieval anciano (túnica de lana, calzas, botas, mandil, cinto, bufanda, pelo y barba blancos con mechones que ondean con el viento, martillo). Salto de ~1,15 m (sube a una pared de 1 m); sube solo desniveles de hasta 0,5 m. Suelos, paredes, columnas, vigas, tablones, puertas y árboles son sólidos; tejados y esquinas de tejado se pueden recorrer como rampas.
+- Personaje: cuerpo y animaciones de captura de movimiento (idle / caminar / correr) del maniquí **Xbot de Mixamo**, tomado del repositorio de ejemplos de three.js, escalado a 1,2 m y vestido de constructor medieval anciano (túnica de lana, calzas, botas, mandil, cinto, bufanda, pelo y barba blancos con mechones que ondean con el viento, martillo). Salto de ~1,15 m (sube a una pared de 1 m); sube solo desniveles de hasta 0,5 m. Suelos, paredes, columnas, vigas, tablones, puertas y árboles son sólidos; tejados y esquinas de tejado se pueden recorrer como rampas.
 - Perrito dorado que te sigue por detrás a la derecha, se aparta si estorba, mueve la cola y se deja acariciar.
-- Piezas nuevas: paredes con corte diagonal 26° y 45° (1 y 0,5 m), esquinas de tejado exterior (cumbrera) e interior (valle) de 1 × 1 m en 26° y 45°, puerta de 1 × 2 m, pared de vidrio de 0,5 × 1 m y antorcha.
+- Piezas nuevas (todas de 1 m o 0,5 m como máximo): paredes con corte diagonal 26° y 45° (1 y 0,5 m de ancho, 1 m de alto total), esquinas de tejado exterior (cumbrera) e interior (valle) de 1 × 1 m en 26° y 45°, puerta de 1 × 1 m con hoja que se abre y se cierra, pared de vidrio de 0,5 × 1 m y antorcha.
 - Antorchas: iluminan con 8 luces puntuales reutilizadas (las 8 más cercanas a la cámara); las demás conservan la llama pero no luz.
 
 ## Anclajes y encaje
