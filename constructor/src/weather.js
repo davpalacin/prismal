@@ -1,19 +1,19 @@
 import {
   AdditiveBlending, BufferGeometry, CanvasTexture, Color, DirectionalLight, Float32BufferAttribute, FogExp2,
   HemisphereLight, LineSegments, LineBasicMaterial, Mesh, MeshBasicMaterial, Points, PointsMaterial, SphereGeometry,
-  Sprite, SpriteMaterial, Vector3,
+  Sprite, SpriteMaterial, Vector3, ShaderMaterial, BackSide,
 } from 'three';
 
 // Hora del día (paleta base) y clima (modificadores). Todo se interpola poco a
 // poco, así los cambios son graduales.
 const TIME = {
-  dia: { sky: '#8ec5ee', hemiS: '#d6e6ff', hemiG: '#6b7a4a', hemi: 2.3, sunC: '#fff1d0', sun: 3.8, fog: 0.005, day: 1, dir: [0.55, 0.8, 0.4] },
+  dia: { sky: '#86b4d4', hemiS: '#cfe0ee', hemiG: '#6f7c4c', hemi: 2.5, sunC: '#ffe7bd', sun: 3.6, fog: 0.007, day: 1, dir: [0.5, 0.62, 0.45] },
   noche: { sky: '#0a1224', hemiS: '#7f98d0', hemiG: '#2a3040', hemi: 1.5, sunC: '#a9bfee', sun: 2.4, fog: 0.02, day: 0, dir: [-0.5, 0.55, -0.7] },
 };
 export const KINDS = {
   despejado: { grey: 0, dark: 1, fog: 0, clouds: 0.25, rain: 0, wind: 0.12, storm: 0 },
   brisa: { grey: 0.1, dark: 0.95, fog: 0.002, clouds: 0.5, rain: 0, wind: 1, storm: 0 },
-  niebla: { grey: 0.65, dark: 0.8, fog: 0.04, clouds: 0.8, rain: 0, wind: 0.08, storm: 0 },
+  niebla: { grey: 0.6, dark: 0.82, fog: 0.017, clouds: 0.8, rain: 0, wind: 0.2, storm: 0 },
   lluvia: { grey: 0.6, dark: 0.6, fog: 0.012, clouds: 1, rain: 0.75, wind: 0.5, storm: 0 },
   tormenta: { grey: 0.75, dark: 0.35, fog: 0.02, clouds: 1, rain: 1, wind: 0.95, storm: 1 },
 };
@@ -31,12 +31,30 @@ function blob(r, g, b) {
   return new CanvasTexture(cv);
 }
 
-export function makeWeather(scene, windU, audio) {
+export function makeWeather(scene, windU, audio, renderer) {
   scene.background = new Color();
   scene.fog = new FogExp2('#000000', 0.01);
   const hemi = new HemisphereLight('#ffffff', '#444444', 1);
   const sun = new DirectionalLight('#ffffff', 1);
-  scene.add(hemi, sun);
+  scene.add(hemi, sun, sun.target);
+  sun.castShadow = true;
+  Object.assign(sun.shadow, { bias: -0.0004, normalBias: 0.04, radius: 3 });
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 200 });
+  // Cielo en degradado: color del horizonte = color de la niebla (fusión atmosférica).
+  const dome = new Mesh(new SphereGeometry(450, 24, 14), new ShaderMaterial({
+    side: BackSide, depthWrite: false, depthTest: false, fog: false,
+    uniforms: { top: { value: new Color() }, horizon: { value: new Color() } },
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `uniform vec3 top; uniform vec3 horizon; varying vec3 vP;
+      void main(){ float h = clamp(vP.y * 1.5 + 0.05, 0.0, 1.0); gl_FragColor = vec4(mix(horizon, top, pow(h, 0.55)), 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+      }`,
+  }));
+  dome.renderOrder = -100;
+  dome.frustumCulled = false;
+  scene.add(dome);
 
   // Cielo: sol, luna, estrellas y nubes; siguen a la cámara.
   const sunSpr = new Sprite(new SpriteMaterial({ map: blob(255, 244, 210), fog: false, depthWrite: false, transparent: true, blending: AdditiveBlending }));
@@ -73,7 +91,7 @@ export function makeWeather(scene, windU, audio) {
     sky: new Color(), hemiS: new Color(), hemiG: new Color(), sunC: new Color(), dir: new Vector3(),
     hemi: 1, sun: 1, fog: 0.01, day: 0, clouds: 0, rain: 0, wind: 0, storm: 0,
   };
-  const st = { time: 'noche', kind: 'brisa', auto: true, autoT: 70, flash: 0, flashT: 8, thunder: [], first: true };
+  const st = { time: 'dia', kind: 'niebla', auto: true, autoT: 70, flash: 0, flashT: 8, thunder: [], first: true };
   const tmp = new Color(), tc = new Color();
   const wind = { x: 0, z: 0, s: 0 };
 
@@ -85,7 +103,7 @@ export function makeWeather(scene, windU, audio) {
   }
   const lerp = (a, b, f) => a + (b - a) * f;
 
-  function update(dt, t, cam) {
+  function update(dt, t, cam, focus = cam) {
     const T = TIME[st.time], K = KINDS[st.kind], f = st.first ? 1 : 1 - Math.exp(-dt * 0.55);
     st.first = false;
     const col = new Color();
@@ -126,13 +144,19 @@ export function makeWeather(scene, windU, audio) {
     for (let i = st.thunder.length - 1; i >= 0; i--) if ((st.thunder[i] -= dt) <= 0) { audio.thunder(); st.thunder.splice(i, 1); }
     const fl = st.flash * st.flash;
 
-    scene.background.copy(c.sky).lerp(tc.set('#dfe8ff'), fl * 0.7);
-    scene.fog.color.copy(scene.background);
+    // horizonte claro y neblinoso; cenit más profundo
+    const hz = new Color().copy(c.sky).lerp(tc.set('#e4ebee'), 0.42 * c.day * (1 - K.grey * 0.4)).lerp(tc.set('#dfe8ff'), fl * 0.7);
+    const tp = new Color().copy(c.sky).multiplyScalar(0.85).lerp(tc.set('#4f7fb0'), 0.3 * c.day * (1 - K.grey));
+    dome.material.uniforms.top.value.copy(tp).lerp(tc.set('#dfe8ff'), fl * 0.5);
+    dome.material.uniforms.horizon.value.copy(hz);
+    dome.position.copy(cam);
+    scene.background.copy(hz);
+    scene.fog.color.copy(hz);
     scene.fog.density = c.fog;
     hemi.color.copy(c.hemiS); hemi.groundColor.copy(c.hemiG); hemi.intensity = c.hemi + fl * 3;
     sun.color.copy(c.sunC); sun.intensity = c.sun + fl * 4;
-    sun.position.copy(c.dir).multiplyScalar(60).add(cam);
-    sun.target.position.copy(cam);
+    sun.position.copy(c.dir).multiplyScalar(80).add(focus);
+    sun.target.position.copy(focus);
     sun.target.updateMatrixWorld();
 
     // Cielo

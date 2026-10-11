@@ -1,5 +1,5 @@
 import {
-  Mesh, MeshBasicMaterial, MeshLambertMaterial, PerspectiveCamera, PointLight, Raycaster, Scene, SphereGeometry,
+  ACESFilmicToneMapping, PCFSoftShadowMap, Mesh, MeshBasicMaterial, MeshLambertMaterial, PerspectiveCamera, PointLight, Raycaster, Scene, SphereGeometry,
   Vector2, Vector3, WebGLRenderer, Group, BufferGeometry, Float32BufferAttribute, LineBasicMaterial, LineSegments,
   Uniform,
 } from 'three';
@@ -10,6 +10,7 @@ import { texturesReady } from './textures.js';
 import { matFor, woodMat } from './materials.js';
 import { KINDS, makeWeather } from './weather.js';
 import { makeAudio } from './audio.js';
+import { outlineHumanU, outlineU } from './toon.js';
 import { makeDog } from './actors.js';
 import { makeHuman } from './human.js';
 import { heightAt, raycastTerrain } from './terrain.js';
@@ -19,12 +20,16 @@ import * as phys from './physics.js';
 const canvas = document.getElementById('c');
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.5;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = PCFSoftShadowMap;
 const scene = new Scene();
 const camera = new PerspectiveCamera(60, 1, 0.1, 500);
 const audio = makeAudio();
 const windU = { uTime: new Uniform(0), uWind: new Uniform(0), uDir: new Uniform(new Vector2(1, 0)) };
 buildWorld(scene, phys.addCircle, windU);
-const weather = makeWeather(scene, windU, audio);
+const weather = makeWeather(scene, windU, audio, renderer);
 
 const delMat = new MeshLambertMaterial({ color: '#d9453b' });
 const ghostMat = new MeshBasicMaterial({ color: '#3fc060', transparent: true, opacity: 0.55, depthWrite: false, fog: false });
@@ -248,6 +253,7 @@ function act() {
     const def = PIECES[cur.id], g = geometryOf(cur.id);
     const m = new Mesh(g, matFor(g));
     m.userData.m = m.material;
+    m.castShadow = m.receiveShadow = true;
     m.position.set(cur.x, cur.y, cur.z);
     m.rotation.y = cur.rot * Math.PI / 4;
     m.matrixAutoUpdate = false;
@@ -259,6 +265,7 @@ function act() {
     if (def.leaf) {                                   // puerta: la hoja es un hijo que gira sobre la bisagra
       const leaf = new Mesh(leafGeometryOf(cur.id), woodMat);
       leaf.userData.m = woodMat;
+      leaf.castShadow = true;
       leaf.position.set(...def.door.pivot);
       m.add(leaf);
       e.door = { leaf, t: 0, open: false, owner: {}, def, pl: { ...cur } };
@@ -473,7 +480,8 @@ function frame(now) {
   last = now;
   step(dt, now / 1000);
   updateCamera();
-  weather.update(dt, now / 1000, camera.position);
+  weather.update(dt, now / 1000, camera.position, human.group.position);
+  { const k = Math.min(0.03, Math.max(0.006, camera.position.distanceTo(human.group.position) * 0.0032)); outlineU.value = k; outlineHumanU.value = k / human.outlineScale; }
   const s = camera.matrixWorld.elements.join();
   if (s !== sig) { sig = s; dirty = true; }
   if (dirty) refresh();

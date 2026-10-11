@@ -17,12 +17,21 @@ export function fbm(x, y) {
   return s;
 }
 
+export const POND = { x: -13, z: 8.5, r: 3.6 };   // estanque
+export function pondK(x, z) {                    // 1 en el fondo del estanque → 0 en la orilla alta
+  const d = Math.hypot(x - POND.x, z - POND.z) / POND.r;
+  const k = Math.min(1, Math.max(0, (1.7 - d) / 0.8));
+  return k * k * (3 - 2 * k);
+}
+
 export function heightAt(x, z) {
   const r = Math.hypot(x, z);
   let t = Math.min(1, Math.max(0, (r - CLEAR_R) / BLEND));
   t = t * t * (3 - 2 * t);
   if (t === 0) return 0;
-  return t * (0.2 + fbm(x * 0.06 + 11, z * 0.06 + 3) * 6 + fbm(x * 0.7, z * 0.7) * 0.4);
+  const h = t * (0.2 + fbm(x * 0.06 + 11, z * 0.06 + 3) * 6 + fbm(x * 0.7, z * 0.7) * 0.4);
+  const k = pondK(x, z);
+  return k > 0 ? h * (1 - k) - 0.32 * k : h;
 }
 
 // Primer punto donde el rayo toca el terreno (marcha + bisección).

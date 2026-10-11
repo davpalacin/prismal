@@ -48,5 +48,11 @@ Panel arriba a la derecha: **Hora** (día / noche) y **Clima** (despejado, brisa
 - **Personaje**: Xbot de Mixamo (`examples/models/gltf/Xbot.glb` de three.js). Licencia de Mixamo: uso libre en proyectos, pero no redistribuible como recurso suelto; si publicas el proyecto, revisa sus condiciones o sustituye `src/tex/man.glb` por otro modelo con huesos Mixamo (`idle`, `walk`, `run`).
 - Reducido (animaciones sobrantes y 55 % de triángulos eliminados) e incrustado en `dist/app.js`.
 
+## Estilo visual (ilustrado, inspirado en "Castle Against the Dark")
+- **Personajes**: sombreado por bandas (cel-shading) y contorno de tinta (casco invertido, grosor adaptado a la distancia). Túnica verde con orla clara, cinto y botas de cuero.
+- **Mundo de baja poligonalización**: pinos de copas apiladas y árboles frondosos de copas en lóbulos, sombreado facetado y degradado pintado (más claro arriba); arbustos, flores silvestres, rocas grises facetadas y un estanque.
+- **Atmósfera**: cielo en degradado cuyo horizonte se funde con la niebla, mapeo de tonos ACES, sombras suaves proyectadas por el sol/luna y viñeta. Arranca de día con niebla ligera.
+- **Interfaz**: tipografía serif, paneles oscuros con filo dorado e inventario con casillas circulares.
+
 ## Rendimiento
-Geometría propia con UV por proyección y color por vértice, 4 materiales compartidos (madera, vidrio, llama, tejas; geometría compartida por tipo), hierba y árboles en `InstancedMesh`, 8 luces puntuales fijas para antorchas, sin sombras, y bucle de render continuo (hay personaje, perro, clima y luces animadas).
+Geometría propia con UV por proyección y color por vértice, 4 materiales compartidos (madera, vidrio, llama, tejas; geometría compartida por tipo), hierba y árboles en `InstancedMesh`, 8 luces puntuales fijas para antorchas, sombras suaves de un solo mapa de 2048 px que sigue al personaje, y bucle de render continuo (hay personaje, perro, clima y luces animadas).

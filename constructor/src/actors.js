@@ -1,6 +1,7 @@
-import { CapsuleGeometry, Group, Mesh, MeshLambertMaterial, SphereGeometry, TorusGeometry } from 'three';
+import { CapsuleGeometry, Group, Mesh, SphereGeometry, TorusGeometry } from 'three';
+import { addOutlines, outlineU, toon } from './toon.js';
 
-const M = (c, o = {}) => new MeshLambertMaterial({ color: c, ...o });
+const M = (c, o = {}) => toon(c, o);
 
 // Perrito dorado con collar rojo, de formas suaves: cuerpo, cabeza, orejas caídas,
 // patas articuladas y una cola que se mueve.
@@ -43,6 +44,8 @@ export function makeDog() {
   const seg = (r, l, rx, y, z, parent, mat) => { const g = new Group(); g.position.set(0, y, z); g.rotation.x = rx; parent.add(g); blob(cap(r, l).rotateX(Math.PI / 2), mat, 0, 0, -l / 2, 1, 1, 1, g); return g; };
   const t1 = seg(0.03, 0.06, -0.9, 0, 0, tail, back), t2 = seg(0.025, 0.06, 0.4, 0.0, -0.1, t1, coat), t3 = seg(0.02, 0.05, 0.5, 0.0, -0.1, t2, cream);
   void t3;
+  addOutlines(root, outlineU);
+  root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   let ph = 0, t = 0;
   return {
     group: root, head,

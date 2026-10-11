@@ -5,6 +5,7 @@ import {
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import manUrl from './tex/man.glb';
 import { T } from './textures.js';
+import { addOutlines, outlineHumanU, toon } from './toon.js';
 
 // Cuerpo y animaciones (idle / walk / run, captura de movimiento) del maniquí
 // "Xbot" de Mixamo, tomado del repositorio de ejemplos de three.js. Sobre el
@@ -12,7 +13,7 @@ import { T } from './textures.js';
 // bufanda, barba y melena (mechones que ondean con el viento) y martillo.
 const SCALE = 1.2 / 1.77;                 // 1,77 m del modelo → 1,2 m
 const V = (x, y, z) => new Vector3(x, y, z);
-const M = (c, o = {}) => new MeshLambertMaterial({ color: c, ...o });
+const M = (c, o = {}) => toon(c, o);
 
 export function makeHuman() {
   const root = new Group(), wrap = new Group();
@@ -29,7 +30,7 @@ export function makeHuman() {
     const model = g.scene;
     wrap.add(model);
     const B = S.B;
-    const skin = M('#dba784'), skinJ = M('#c58f6c');
+    const skin = M('#e0ab86'), skinJ = M('#cf9670');
     model.traverse((o) => {
       if (o.isBone) B[o.name.replace('mixamorig', '')] = o;
       if (o.isSkinnedMesh) { o.material = o.name.includes('Joints') ? skinJ : skin; o.frustumCulled = false; }
@@ -37,9 +38,9 @@ export function makeHuman() {
     model.updateMatrixWorld(true);
 
     // --- materiales ---
-    const wool = M('#7a6141'), wool2 = M('#6b543a'), hose = M('#4a3d30'), cloth = M('#8a3b2d'), white = M('#f2f0ea'), grey = M('#d6d4cc');
+    const wool = M('#4f7a45'), wool2 = M('#456b3d'), hose = M('#5a4634'), cloth = M('#a8432f'), white = M('#f4f2ec'), grey = M('#dcdad2'), trim = M('#efe6c8');
     const leather = (c) => M(c, { map: T.wood, normalMap: T.woodN, normalScale: new Vector2(0.6, 0.6) });
-    const boot = leather('#6b4a2f'), belt = leather('#4a3020'), apron = leather('#b58a5a'), steel = M('#8b8f96'), black = M('#14100d');
+    const boot = leather('#6b4a2f'), belt = leather('#4a3020'), apron = leather('#b58a5a'), steel = M('#9aa0a8'), black = M('#14100d');
 
     // Las piezas se construyen en coordenadas del modelo (pose de referencia) y
     // se cuelgan del hueso con attach(), que conserva su posición en el mundo.
@@ -63,6 +64,8 @@ export function makeHuman() {
     for (const s of [-1, 1]) part(new SphereGeometry(0.1, 10, 8), wool, V(s * 0.085, 1.45, -0.03), 'Spine2', [1.05, 0.75, 1]);   // cuello de la túnica
     part(new CylinderGeometry(0.2, 0.31, 0.38, 16, 1, true), wool, V(0, 0.79, 0), 'Hips', [1, 1, 0.82]);   // falda de la túnica
     part(new CylinderGeometry(0.205, 0.205, 0.06, 16), belt, V(0, 1.0, 0), 'Hips', [1.04, 1, 0.74]);
+    part(new CylinderGeometry(0.312, 0.318, 0.045, 24, 1, true), trim, V(0, 0.625, 0), 'Hips', [1, 1, 0.82]);   // orla de la túnica
+    part(new CylinderGeometry(0.31, 0.314, 0.012, 24, 1, true), belt, V(0, 0.668, 0), 'Hips', [1, 1, 0.82]);
     part(new BoxGeometry(0.05, 0.05, 0.02), steel, V(0, 1.0, 0.16), 'Hips');
     part(new BoxGeometry(0.28, 0.36, 0.02), apron, V(0, 0.8, 0.205), 'Hips');
     part(new BoxGeometry(0.22, 0.3, 0.02), apron, V(0, 1.24, 0.15), 'Spine1');
@@ -73,7 +76,7 @@ export function makeHuman() {
       part(new SphereGeometry(0.092, 10, 8), wool, P[L + 'Arm'], L + 'Arm');
       limb(P[L + 'Arm'], P[L + 'ForeArm'], 0.066, 0.055, wool2, L + 'Arm');
       limb(P[L + 'ForeArm'], P[L + 'Hand'].clone().lerp(P[L + 'ForeArm'], 0.12), 0.055, 0.043, wool2, L + 'ForeArm');
-      limb(P[L + 'Hand'].clone().lerp(P[L + 'ForeArm'], 0.2), P[L + 'Hand'].clone().lerp(P[L + 'ForeArm'], 0.1), 0.05, 0.05, belt, L + 'ForeArm');
+      limb(P[L + 'Hand'].clone().lerp(P[L + 'ForeArm'], 0.2), P[L + 'Hand'].clone().lerp(P[L + 'ForeArm'], 0.1), 0.05, 0.05, trim, L + 'ForeArm');                                                 // puño claro
       // Piernas: calzas de lana, caña de la bota y pie con puntera.
       limb(P[L + 'UpLeg'], P[L + 'Leg'], 0.1, 0.07, hose, L + 'UpLeg');
       limb(P[L + 'Leg'], V(s * 0.08, 0.34, 0.01), 0.07, 0.06, hose, L + 'Leg');
@@ -98,7 +101,9 @@ export function makeHuman() {
     // Mechones colgantes (pivote arriba): barba, melena y colas de la bufanda.
     const strand = (len, w, mat, pos, bone, flex, rest, ph) => {
       const g = new Group(); g.position.copy(pos);
-      g.add(new Mesh(new CylinderGeometry(w, w * 0.2, len, 5).translate(0, -len / 2, 0), mat));
+      const sm = new Mesh(new CylinderGeometry(w, w * 0.2, len, 6).translate(0, -len / 2, 0), mat);
+      sm.userData.noInk = true;
+      g.add(sm);
       hang(g, bone);
       S.strands.push({ g, q0: g.quaternion.clone(), flex, rest, ph });
     };
@@ -121,6 +126,10 @@ export function makeHuman() {
     h.position.copy(P.RightHand).add(V(-0.025, 0, 0.01));
     S.hammer = hang(h, 'RightHand');
 
+    // Contorno de tinta (grosor ajustado cada fotograma desde main)
+    addOutlines(model, outlineHumanU, (o) => o.userData.noInk);
+    model.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+
     // Animaciones
     S.mixer = new AnimationMixer(model);
     for (const c of g.animations) { const a = S.mixer.clipAction(c); a.play(); a.setEffectiveWeight(0); S.act[c.name] = a; }
@@ -130,7 +139,7 @@ export function makeHuman() {
 
   let petBlend = 0;
   return {
-    group: root,
+    group: root, outlineScale: 1 / SCALE,
     setTool(on) { S.tool = on; if (S.hammer) S.hammer.visible = on; },
     // speed (m/s), air, pet, w = viento en el marco del personaje {x,z,s}, t, run
     update(dt, speed, air, pet, w, t) {
